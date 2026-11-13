@@ -1,0 +1,32 @@
+{
+  "name": "marsd-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && node scripts/licenses.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "prettier --check src tests scripts vite.config.ts playwright.config.ts && tsc --noEmit",
+    "test:e2e": "playwright test",
+    "format": "prettier --write src tests scripts vite.config.ts playwright.config.ts"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@tauri-apps/cli": "2.12.4",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "prettier": "^3.10.1",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0"
+  },
+  "engines": {
+    "node": ">=22.12 <27"
+  }
+}

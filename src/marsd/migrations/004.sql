@@ -1,0 +1,10 @@
+CREATE TABLE runs(id TEXT PRIMARY KEY, state TEXT NOT NULL, document TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT);
+CREATE TABLE run_events(run_id TEXT NOT NULL REFERENCES runs(id), event_id TEXT NOT NULL, document TEXT NOT NULL, PRIMARY KEY(run_id,event_id));
+CREATE TABLE run_refs(run_id TEXT NOT NULL REFERENCES runs(id), version_id TEXT NOT NULL REFERENCES versions(id), role TEXT NOT NULL, evidence TEXT NOT NULL, partial INTEGER NOT NULL, PRIMARY KEY(run_id,version_id,role,evidence));
+CREATE INDEX run_refs_version ON run_refs(version_id,run_id);
+CREATE TABLE graph_nodes(id TEXT PRIMARY KEY, kind TEXT NOT NULL, label TEXT NOT NULL, metadata TEXT NOT NULL);
+CREATE TABLE graph_edges(id TEXT PRIMARY KEY, source TEXT NOT NULL REFERENCES graph_nodes(id), target TEXT NOT NULL REFERENCES graph_nodes(id), relation TEXT NOT NULL, evidence TEXT NOT NULL, reference TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE INDEX graph_edges_source ON graph_edges(source,evidence,id);
+CREATE INDEX graph_edges_target ON graph_edges(target,evidence,id);
+CREATE TABLE graph_imports(importer_id TEXT NOT NULL, event_id TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(importer_id,event_id));
+INSERT INTO graph_nodes SELECT v.id,'artifact_version',a.uri,'{}' FROM versions v JOIN artifacts a ON a.id=v.artifact_id;

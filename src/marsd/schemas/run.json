@@ -1,0 +1,75 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "script": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "title": "Script",
+      "type": "string"
+    },
+    "arguments": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 128,
+      "title": "Arguments",
+      "type": "array"
+    },
+    "inputs": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 128,
+      "title": "Inputs",
+      "type": "array"
+    },
+    "outputs": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 128,
+      "title": "Outputs",
+      "type": "array"
+    },
+    "config": {
+      "anyOf": [
+        {
+          "maxLength": 8192,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Config"
+    },
+    "strong_inputs": {
+      "default": false,
+      "title": "Strong Inputs",
+      "type": "boolean"
+    },
+    "capture_text": {
+      "default": false,
+      "title": "Capture Text",
+      "type": "boolean"
+    },
+    "capture_arguments": {
+      "default": false,
+      "title": "Capture Arguments",
+      "type": "boolean"
+    },
+    "timeout": {
+      "default": 60,
+      "maximum": 300,
+      "minimum": 0.1,
+      "title": "Timeout",
+      "type": "number"
+    }
+  },
+  "required": [
+    "script"
+  ],
+  "title": "RunSpec",
+  "type": "object"
+}

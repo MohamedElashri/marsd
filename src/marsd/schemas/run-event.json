@@ -1,0 +1,65 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Event Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "stage_start",
+        "stage_finish",
+        "stage_error",
+        "read",
+        "write"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "name": {
+      "default": "",
+      "maxLength": 128,
+      "title": "Name",
+      "type": "string"
+    },
+    "path": {
+      "anyOf": [
+        {
+          "maxLength": 8192,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Path"
+    },
+    "exception_type": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Exception Type"
+    },
+    "partial": {
+      "default": false,
+      "title": "Partial",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "event_id",
+    "kind"
+  ],
+  "title": "Event",
+  "type": "object"
+}

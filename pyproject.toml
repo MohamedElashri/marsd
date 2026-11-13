@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "marsd"
+version = "0.1.0"
+description = "A local scientific dataset investigation workbench"
+requires-python = ">=3.12,<3.14"
+license = "Apache-2.0"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "typer>=0.15,<1",
+  "pydantic>=2.10,<3", "h5py>=3.12,<4", "numpy>=2.2,<3",
+  "pyarrow>=19,<27", "PyYAML>=6,<7", "pint>=0.24,<1",
+  "portalocker>=3,<4", "psutil>=7,<8",
+]
+
+[project.scripts]
+marsd = "marsd.cli:app"
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "httpx>=0.28,<1", "ruff>=0.11,<1", "mypy>=1.15,<2", "types-PyYAML", "types-psutil"]
+
+desktop-build = ["pyinstaller==6.22.3"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/marsd"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "web", "scripts", "tests", "desktop", ".github", ".gitattributes", ".gitignore", ".python-version", "pyproject.toml", "uv.lock", "LICENSE", "plan.md"]
+exclude = ["web/node_modules", "web/test-results", "desktop/runtime", "desktop/build", "desktop/src-tauri/target", "desktop/src-tauri/gen"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["security: security and data-preservation checks", "performance: generated large-data measurements"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+ignore_missing_imports = true

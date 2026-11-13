@@ -1,0 +1,61 @@
+name: Core, browser and package checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+        python: ['3.12', '3.13']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      MARSD_E2E_ARTIFACTS: 100
+      UV_PYTHON: ${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.6.9'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - run: uv sync --python ${{ matrix.python }} --locked --all-extras
+      - run: npm --prefix web ci --ignore-scripts
+      - run: npm --prefix web run build
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src/marsd
+      - run: uv run python scripts/generate_api.py --check
+      - run: uv run python scripts/check_markdown_policy.py
+      - run: uv run pytest -q -m "not performance" --junitxml=test-results.xml
+      - if: runner.os == 'Linux'
+        run: npm --prefix web exec -- playwright install --with-deps chromium
+      - if: runner.os != 'Linux'
+        run: npm --prefix web exec -- playwright install chromium
+      - run: npm --prefix web run test:e2e
+      - run: uv build
+      - run: uv run python scripts/check_wheel.py
+      - run: uv run python scripts/check_installed.py
+      - run: uv run python scripts/dependency_inventory.py --output dependency-inventory.json
+      - run: uv run python scripts/record_platform_evidence.py --expected-python ${{ matrix.python }} --junit test-results.xml --browser web/test-results/results.json --output platform-evidence.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: validation-${{ matrix.os }}-python-${{ matrix.python }}
+          path: |
+            test-results.xml
+            web/test-results/
+            platform-evidence.json
+            dependency-inventory.json
+            dist/*.whl
