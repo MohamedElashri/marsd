@@ -19,7 +19,7 @@ SKIP = {
 
 def checkpoint():
     files = []
-    for directory in [".github", "src", "scripts", "tests", "web", "desktop"]:
+    for directory in [".github", "src", "scripts", "tests", "web", "desktop", "docs"]:
         for path in (ROOT / directory).rglob("*"):
             if (
                 path.is_file()
@@ -36,6 +36,7 @@ def checkpoint():
             ".gitattributes",
             ".python-version",
             "LICENSE",
+            "README.md",
             "pyproject.toml",
             "uv.lock",
         ]

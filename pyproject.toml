@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "marsd"
 version = "0.1.0"
 description = "A local scientific dataset investigation workbench"
+readme = "README.md"
 requires-python = ">=3.12,<3.14"
 license = "Apache-2.0"
 dependencies = [
@@ -14,6 +15,11 @@ dependencies = [
   "pyarrow>=19,<27", "PyYAML>=6,<7", "pint>=0.24,<1",
   "portalocker>=3,<4", "psutil>=7,<8",
 ]
+
+[project.urls]
+Repository = "https://github.com/MohamedElashri/marsd"
+Documentation = "https://github.com/MohamedElashri/marsd/tree/main/docs"
+Issues = "https://github.com/MohamedElashri/marsd/issues"
 
 [project.scripts]
 marsd = "marsd.cli:app"
@@ -27,8 +33,8 @@ desktop-build = ["pyinstaller==6.22.3"]
 packages = ["src/marsd"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "web", "scripts", "tests", "desktop", ".github", ".gitattributes", ".gitignore", ".python-version", "pyproject.toml", "uv.lock", "LICENSE", "plan.md"]
-exclude = ["web/node_modules", "web/test-results", "desktop/runtime", "desktop/build", "desktop/src-tauri/target", "desktop/src-tauri/gen"]
+include = ["src", "web", "scripts", "tests", "desktop", "docs", ".github", ".gitattributes", ".gitignore", ".python-version", "pyproject.toml", "uv.lock", "LICENSE", "README.md"]
+exclude = ["plan.md", "web/node_modules", "web/test-results", "desktop/runtime", "desktop/build", "desktop/src-tauri/target", "desktop/src-tauri/gen"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

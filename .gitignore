@@ -12,6 +12,7 @@ build/
 *.egg-info/
 demo/
 .DS_Store
+/plan.md
 
 desktop/runtime/
 desktop/build/

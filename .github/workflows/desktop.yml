@@ -1,9 +1,9 @@
 name: Native desktop checks
 on:
   push:
-    paths-ignore: [plan.md]
+    paths-ignore: [README.md, 'docs/**']
   pull_request:
-    paths-ignore: [plan.md]
+    paths-ignore: [README.md, 'docs/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -90,7 +90,7 @@ jobs:
         run: |
           $installer = (Get-ChildItem desktop/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe | Select-Object -First 1).FullName
           uv run python scripts/check_desktop_install.py --package "$installer" --output desktop-install-evidence.json --native-driver "$PWD/msedgedriver.exe"
-      - run: uv run python scripts/check_markdown_policy.py
+      - run: uv run python scripts/check_docs.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
