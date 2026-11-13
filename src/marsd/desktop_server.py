@@ -57,14 +57,42 @@ async def serve(project: Path, owner_pid: int, *, create: bool, roots: list[str]
             server.should_exit = True
 
     control_fd = sys.stdin.fileno()
-    os.set_blocking(control_fd, False)
+    if os.name == "nt":
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+
+        peek = ctypes.windll.kernel32.PeekNamedPipe  # type: ignore[attr-defined]
+        peek.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+            ctypes.c_void_p,
+            ctypes.POINTER(wintypes.DWORD),
+            ctypes.c_void_p,
+        ]
+        peek.restype = wintypes.BOOL
+        control_handle = msvcrt.get_osfhandle(control_fd)  # type: ignore[attr-defined]
+
+        def read_control() -> bytes:
+            available = wintypes.DWORD()
+            if not peek(control_handle, None, 0, None, ctypes.byref(available), None):
+                return b""
+            if not available.value:
+                raise BlockingIOError
+            return os.read(control_fd, 1)
+    else:
+        os.set_blocking(control_fd, False)
+
+        def read_control() -> bytes:
+            return os.read(control_fd, 1)
 
     def control() -> None:
         # Never hold buffered/CRT stdin locks while workers spawn or the owner exits.
         line = bytearray()
         while not server.should_exit:
             try:
-                byte = os.read(control_fd, 1)
+                byte = read_control()
             except BlockingIOError:
                 time.sleep(0.05)
                 continue
@@ -120,7 +148,11 @@ def main() -> None:
             else {
                 "code": "BACKEND_START_FAILED",
                 "message": "Native backend startup failed.",
-                "details": {"exception_type": type(error).__name__},
+                "details": {
+                    "exception_type": type(error).__name__,
+                    "errno": getattr(error, "errno", None),
+                    "winerror": getattr(error, "winerror", None),
+                },
             }
         )
         print(dumps({"error": value}), flush=True)
