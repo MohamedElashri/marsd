@@ -327,9 +327,42 @@ test('dense workbench preserves scientific context across files and evidence vie
   await page.getByRole('button', { name: 'Previous rows', exact: true }).click();
   await expect(page.locator('.results tbody tr').first().locator('.row-number')).toHaveText('0');
 
+  let releaseSubmission!: () => void, submissionStarted!: () => void;
+  const submissionGate = new Promise<void>((resolve) => {
+    releaseSubmission = resolve;
+  });
+  const startedSubmission = new Promise<void>((resolve) => {
+    submissionStarted = resolve;
+  });
+  await page.route('**/api/jobs', async (route) => {
+    if (
+      route.request().method() === 'POST' &&
+      route.request().postDataJSON().operation === 'profile'
+    ) {
+      submissionStarted();
+      await submissionGate;
+    }
+    await route.continue();
+  });
+  const acceptedProfile = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/jobs') &&
+      response.request().method() === 'POST' &&
+      response.request().postDataJSON().operation === 'profile',
+  );
+  const cancellationRequest = page.waitForRequest(
+    (request) => request.method() === 'DELETE' && request.url().includes('/api/jobs/'),
+  );
   await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+  await startedSubmission;
+  await expect(page.getByRole('button', { name: 'Statistics', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: /Cancel job/ }).click();
+  releaseSubmission();
+  const acceptedId = (await (await acceptedProfile).json()).id;
+  expect((await cancellationRequest).url().endsWith(`/api/jobs/${acceptedId}`)).toBe(true);
   await expect(page.getByRole('status').filter({ hasText: 'cancelled' })).toBeVisible();
+  await page.unroute('**/api/jobs');
+
   await page.getByRole('button', { name: 'Help and keyboard shortcuts', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Workbench reference' })).toBeVisible();
   await page.keyboard.press('Escape');

@@ -119,6 +119,8 @@ function App() {
   const [notice, setNotice] = useState('');
   const [job, setJob] = useState<Data | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const submissionRef = useRef<{ cancelled: boolean } | null>(null);
   const busyRef = useRef(false);
   const pending = useRef<Queued | null>(null);
   const [navigatorWidth, setNavigatorWidth] = useState(248);
@@ -262,23 +264,40 @@ function App() {
   }
   async function start(next: Queued) {
     const session = sessionEpoch.current;
+    const submission = { cancelled: false };
+    submissionRef.current = submission;
     busyRef.current = true;
     setSubmitting(true);
+    setCancelling(false);
     setError('');
     setNotice('');
     try {
       const reply = await api('jobs', next.request);
       if (session !== sessionEpoch.current) return;
       setJob({ id: reply.id, state: 'QUEUED', request: next.request, context: next.context });
+      if (submission.cancelled) {
+        try {
+          await api(`jobs/${reply.id}`, undefined, 'DELETE');
+        } catch (reason) {
+          if (session === sessionEpoch.current) {
+            setError((reason as Error).message);
+            setCancelling(false);
+          }
+        }
+      }
     } catch (reason) {
       if (session !== sessionEpoch.current) return;
       busyRef.current = false;
+      setCancelling(false);
       setError((reason as Error).message);
       const queued = pending.current;
       pending.current = null;
       if (queued) void start(queued);
     } finally {
-      if (session === sessionEpoch.current) setSubmitting(false);
+      if (submissionRef.current === submission) {
+        submissionRef.current = null;
+        if (session === sessionEpoch.current) setSubmitting(false);
+      }
     }
   }
   function schedule(document: OpenDocument, operation: Operation, patch: Partial<Request> = {}) {
@@ -295,6 +314,7 @@ function App() {
   const complete = useRef<(job: Data, context: Context | null) => void>(() => {});
   complete.current = (value, context) => {
     busyRef.current = false;
+    setCancelling(false);
     const current =
       context &&
       documentsRef.current.find(
@@ -468,12 +488,23 @@ function App() {
     }
   }
   async function cancel() {
-    if (!job) return;
+    if (cancelling) return;
+    pending.current = null;
+    if (submissionRef.current) {
+      submissionRef.current.cancelled = true;
+      setCancelling(true);
+      return;
+    }
+    if (!job || finished.has(job.state)) return;
     const session = sessionEpoch.current;
+    setCancelling(true);
     try {
       await api(`jobs/${job.id}`, undefined, 'DELETE');
     } catch (reason) {
-      if (session === sessionEpoch.current) setError((reason as Error).message);
+      if (session === sessionEpoch.current) {
+        setError((reason as Error).message);
+        setCancelling(false);
+      }
     }
   }
   const keyboard = useRef<(event: KeyboardEvent) => void>(() => {});
@@ -1074,16 +1105,18 @@ function App() {
         <button className="status-job" onClick={() => showDialog('jobs')} aria-label="View jobs">
           <span className={busy ? 'spinner' : 'status-dot'} />
           <span role="status">
-            {submitting
-              ? 'Submitting…'
-              : job
-                ? `${operations[job.operation || job.request?.operation] || 'Operation'} · ${job.state.toLowerCase().replaceAll('_', ' ')}`
-                : 'Ready'}
+            {cancelling
+              ? 'Cancelling…'
+              : submitting
+                ? 'Submitting…'
+                : job
+                  ? `${operations[job.operation || job.request?.operation] || 'Operation'} · ${job.state.toLowerCase().replaceAll('_', ' ')}`
+                  : 'Ready'}
             {pending.current && busy ? ' · next selection queued' : ''}
           </span>
         </button>
         {busy && (
-          <button className="text-button" onClick={() => void cancel()}>
+          <button className="text-button" disabled={cancelling} onClick={() => void cancel()}>
             Cancel job <kbd>Esc</kbd>
           </button>
         )}
@@ -1184,6 +1217,8 @@ function App() {
                     sessionEpoch.current += 1;
                     refreshSequence.current += 1;
                     pending.current = null;
+                    submissionRef.current = null;
+                    setCancelling(false);
                     busyRef.current = false;
                     setJob(null);
                     setSubmitting(false);

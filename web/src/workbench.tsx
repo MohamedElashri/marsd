@@ -335,6 +335,9 @@ export function DataView({ document, busy, change, run }: DocumentProps) {
             Preview
           </button>
           <button
+            disabled={
+              !document.results.profile && (busy || !document.metadata || document.source.stale)
+            }
             aria-pressed={mode === 'profile'}
             onClick={() => {
               change({ dataMode: 'profile' });
