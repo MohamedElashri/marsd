@@ -442,8 +442,10 @@ function App() {
     version: string,
     destination: 'Explore' | 'Validate' | 'Runs' | 'Lineage',
   ) {
+    const session = sessionEpoch.current;
     try {
       const source = await api(`versions/${encodeURIComponent(version)}`);
+      if (session !== sessionEpoch.current) return;
       if (destination === 'Runs') {
         setRunVersion(version);
         setView('Runs');
@@ -462,15 +464,16 @@ function App() {
           'Historical source values are unavailable. Saved evidence remains accessible; a different observation is never substituted.',
         );
     } catch (reason) {
-      setError((reason as Error).message);
+      if (session === sessionEpoch.current) setError((reason as Error).message);
     }
   }
   async function cancel() {
     if (!job) return;
+    const session = sessionEpoch.current;
     try {
       await api(`jobs/${job.id}`, undefined, 'DELETE');
     } catch (reason) {
-      setError((reason as Error).message);
+      if (session === sessionEpoch.current) setError((reason as Error).message);
     }
   }
   const keyboard = useRef<(event: KeyboardEvent) => void>(() => {});
@@ -563,14 +566,16 @@ function App() {
   }
   async function exportReport(format: 'json' | 'html') {
     if (!selectedReport) return;
+    const session = sessionEpoch.current;
     setExporting(true);
     try {
       const reply = await api(`reports/${selectedReport.report_id}/export`, { format, overwrite });
+      if (session !== sessionEpoch.current) return;
       setNotice(`Saved ${reply.path}. Exports include bounded source examples.`);
     } catch (reason) {
-      setError((reason as Error).message);
+      if (session === sessionEpoch.current) setError((reason as Error).message);
     } finally {
-      setExporting(false);
+      if (session === sessionEpoch.current) setExporting(false);
     }
   }
   if (!unlocked)
@@ -1186,6 +1191,25 @@ function App() {
                     setUnlocked(false);
                     setDocuments([]);
                     setActive('');
+                    reportSequence.current += 1;
+                    setProject(null);
+                    setArtifacts([]);
+                    setContracts([]);
+                    setReports([]);
+                    setJobs([]);
+                    setSelectedReport(null);
+                    setReportLoading(false);
+                    setExporting(false);
+                    setReportQuery('');
+                    setReportKind('');
+                    setOverwrite(false);
+                    setRunVersion(undefined);
+                    setFocusedRun('');
+                    setGraphFocus('');
+                    setPath('');
+                    setNotice('');
+                    setError('');
+                    setView('Workbench');
                   }
                   setDialog(null);
                 } catch (reason) {

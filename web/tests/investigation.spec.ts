@@ -341,6 +341,31 @@ test('dense workbench preserves scientific context across files and evidence vie
     page.getByRole('heading', { name: 'Connect to your local workspace', exact: true }),
   ).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('marsd-session'))).toBeNull();
+  // Reconnect to an empty replacement session: old report/file state must not survive logout.
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: { access_token: 'replacement-session' } }),
+  );
+  await page.route('**/api/project', (route) =>
+    route.fulfill({
+      json: {
+        name: 'Replacement project',
+        path: '/replacement',
+        source_roots: [],
+        outputs: '/replacement/.marsd/reports',
+      },
+    }),
+  );
+  for (const endpoint of ['artifacts', 'contracts', 'reports', 'jobs'])
+    await page.route(`**/api/${endpoint}`, (route) => route.fulfill({ json: [] }));
+  await page.getByLabel('Launch code', { exact: true }).fill('replacement-code');
+  await page.getByRole('button', { name: 'Open workspace', exact: true }).click();
+  await expect(page.getByText('Replacement project', { exact: true })).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Reports', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Select a saved report', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('.report-row')).toHaveCount(0);
 
   expect(errors).toEqual([]);
   expect(externalRequests).toEqual([]);
