@@ -1,7 +1,9 @@
 name: Core, browser and package checks
 on:
   push:
+    paths-ignore: [plan.md]
   pull_request:
+    paths-ignore: [plan.md]
   workflow_dispatch:
 permissions:
   contents: read

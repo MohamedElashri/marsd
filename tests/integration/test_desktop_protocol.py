@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import httpx
 import psutil
@@ -84,7 +85,13 @@ def test_native_protocol_one_use_auth_eof_and_reopen(tmp_path):
 
 
 def test_native_protocol_owner_death_releases_project(tmp_path):
-    owner = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    owner = subprocess.Popen(
+        [
+            str(Path(sys.base_prefix) / "python.exe") if os.name == "nt" else sys.executable,
+            "-c",
+            "import time; time.sleep(60)",
+        ]
+    )
     child = None
     try:
         child, _ = launch(tmp_path / "project", owner.pid, create=True)

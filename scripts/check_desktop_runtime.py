@@ -103,7 +103,15 @@ def check(backend):
         for cycle in range(3):
             begin = time.monotonic()
             owner = (
-                subprocess.Popen([sys.executable, "-c", "import time; time.sleep(90)"])
+                subprocess.Popen(
+                    [
+                        str(Path(sys.base_prefix) / "python.exe")
+                        if os.name == "nt"
+                        else sys.executable,
+                        "-c",
+                        "import time; time.sleep(90)",
+                    ]
+                )
                 if cycle == 2
                 else None
             )
