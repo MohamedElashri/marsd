@@ -1295,11 +1295,23 @@ function App() {
                   snapshot consistency.
                 </p>
                 <h2>CLI and recovery</h2>
+                {nativeDesktop && (
+                  <p>
+                    The desktop bundles its CLI as <code>marsd-backend</code> (
+                    <code>marsd-backend.exe</code> on Windows) in the application resources under{' '}
+                    <code>runtime/backend</code>. Replace both <code>marsd</code>
+                    and <code>python</code> in the examples below with that executable's full path.
+                    It uses bundled modules; use the Python distribution with your own environment
+                    for other script dependencies.
+                  </p>
+                )}
                 <p>
                   Use <code>marsd --help</code> for commands. Stop this server before invoking
-                  writing commands. <code>marsd project backup --project PATH</code> writes an
-                  integrity-checked metadata backup. Source data is never included in a database
-                  backup. Startup marks abandoned jobs interrupted.
+                  writing commands.{' '}
+                  {nativeDesktop && 'In the desktop, close the project in Settings first. '}
+                  <code>marsd project backup --project PATH</code> writes an integrity-checked
+                  metadata backup. Source data is never included in a database backup. Startup marks
+                  abandoned jobs interrupted.
                 </p>
                 <h2>Relocation and restore</h2>
                 <p>
@@ -1313,8 +1325,8 @@ function App() {
                   snapshot. Add <code>--apply</code> to restore, preserving a pre-restore snapshot
                   first. Legacy snapshots need <code>--allow-legacy</code> because their project
                   identity cannot be verified. Use <code>project cleanup</code> only for abandoned
-                  internal temporary files. Uninstalling the Python package leaves user projects and
-                  source data in place.
+                  internal temporary files. Removing the application or Python package leaves user
+                  projects and source data in place.
                 </p>
                 <h2>Runs and lineage</h2>
                 <p>

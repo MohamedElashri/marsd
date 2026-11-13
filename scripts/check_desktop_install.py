@@ -24,6 +24,7 @@ ELEMENT = "element-6066-11e4-a52e-4f735466cecf"
 
 
 def run(*args, **kwargs):
+    kwargs.setdefault("timeout", 300)
     return subprocess.run([str(a) for a in args], check=True, **kwargs)
 
 
@@ -110,7 +111,7 @@ def verify(package, output, native_driver=None):
     with tempfile.TemporaryDirectory(
         prefix="marsd-install-", ignore_cleanup_errors=True
     ) as directory:
-        root = Path(directory)
+        root = Path(directory).resolve()
         project = root / "study مرصد Δ µ"
         package_name, install, executable, backend = None, root / "application", None, None
         if system == "Linux":
@@ -193,11 +194,7 @@ def verify(package, output, native_driver=None):
                 driver.click("run_041.parquet")
                 driver.wait_text("inspect · succeeded")
                 driver.click("Compare", "nav button")
-                driver.execute(
-                    """const e = [...document.querySelectorAll('label')].find(e => e.textContent.includes('Reference B')).querySelector('select');
-                e.value = arguments[0]; e.dispatchEvent(new Event('change',{bubbles:true}));""",
-                    str(project / "data/run_042.parquet"),
-                )
+                driver.click("run_042.parquet", "select option")
                 driver.input("Unique alignment keys", "device_id,wavelength_nm")
                 driver.click("Compare A with B")
                 driver.wait_text("DIFFERENT")

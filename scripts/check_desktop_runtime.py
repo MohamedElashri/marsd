@@ -26,7 +26,7 @@ def digest_data(project):
 def check(backend):
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="marsd-native-") as directory:
-        root = Path(directory)
+        root = Path(directory).resolve()
         install = root / "installation with spaces مرصد Δ µ"
         shutil.copytree(backend.parent, install, symlinks=True)
         executable = install / backend.name
