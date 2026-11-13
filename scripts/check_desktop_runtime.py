@@ -115,6 +115,8 @@ def check(backend):
                 if cycle == 2
                 else None
             )
+            error_log = root / f"backend-{cycle}.log"
+            error_stream = error_log.open("wb")
             child = subprocess.Popen(
                 [
                     executable,
@@ -128,7 +130,7 @@ def check(backend):
                 env=env,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=error_stream,
             )
             descendants = []
             try:
@@ -167,7 +169,10 @@ def check(backend):
                             break
                         assert time.monotonic() < deadline
                         time.sleep(0.05)
-                    assert result["state"] == "SUCCEEDED", result
+                    assert result["state"] == "SUCCEEDED", {
+                        "job": result,
+                        "backend_stderr": error_log.read_text(encoding="utf-8", errors="replace"),
+                    }
                     # Cancel a second, queued operation while one worker starts.
                     first = client.post(
                         "/api/jobs",
@@ -200,7 +205,8 @@ def check(backend):
                     raise AssertionError(
                         "Frozen backend did not exit after owner pipe EOF"
                     ) from None
-            assert child.returncode == 0
+            error_stream.close()
+            assert child.returncode == 0, error_log.read_text(encoding="utf-8", errors="replace")
             assert all(
                 not p.is_running() or p.status() == psutil.STATUS_ZOMBIE for p in descendants
             ), "Worker survived owner shutdown"

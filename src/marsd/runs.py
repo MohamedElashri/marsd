@@ -709,11 +709,13 @@ def record(
         recorder.document["launch_error_type"] = type(error).__name__
     finally:
         if process is not None:
+            cleanup_started = time.monotonic()
             children_left = _stop(process, known)
             if state == "SUCCEEDED" and children_left:
                 state, reason = "FAILED", "DESCENDANTS_LEFT_RUNNING"
             for thread in threads:
                 thread.join(timeout=1)
+            recorder.document["cleanup_seconds"] = round(time.monotonic() - cleanup_started, 6)
             recorder.document["capture"] = (
                 {
                     key: {

@@ -56,12 +56,18 @@ async def serve(project: Path, owner_pid: int, *, create: bool, roots: list[str]
                 pass
             server.should_exit = True
 
+    control_fd = sys.stdin.fileno()
+    os.set_blocking(control_fd, False)
+
     def control() -> None:
-        # A daemon must not hold Python's buffered-stdin lock during owner-death shutdown.
+        # Never hold buffered/CRT stdin locks while workers spawn or the owner exits.
         line = bytearray()
-        while True:
+        while not server.should_exit:
             try:
-                byte = os.read(sys.stdin.fileno(), 1)
+                byte = os.read(control_fd, 1)
+            except BlockingIOError:
+                time.sleep(0.05)
+                continue
             except OSError:
                 byte = b""
             line.extend(byte)

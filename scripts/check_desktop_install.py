@@ -266,6 +266,13 @@ def verify(package, output, native_driver=None):
                     pass
             before_remove = hashes(project) if project.exists() else {}
             if system == "Linux":
+                run("sudo", "apt-get", "install", "--reinstall", "-y", package)
+            else:
+                run(package, "/S", f"/D={install}")
+            assert not project.exists() or hashes(project) == before_remove, (
+                "Manual package replacement changed project files"
+            )
+            if system == "Linux":
                 run("sudo", "apt-get", "remove", "-y", package_name)
             else:
                 uninstall = next(install.glob("*uninstall*.exe"))
@@ -284,7 +291,12 @@ def verify(package, output, native_driver=None):
             "package_sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
             "version": __version__,
             "seconds": round(time.monotonic() - started, 3),
+            "webview": {
+                key: session.get("capabilities", {}).get(key)
+                for key in ("browserName", "browserVersion", "platformName")
+            },
             "installed_native_webview": "PASS",
+            "manual_same_version_replacement_preserves_project": "PASS",
             "inspect_preview_diff_validate_run_readiness_lineage": "PASS",
             "close_reopen": "PASS",
             "source_preservation": "PASS",

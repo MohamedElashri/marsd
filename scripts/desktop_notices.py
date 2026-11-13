@@ -29,7 +29,7 @@ def collect(target):
             p
             for p in base.rglob("*")
             if p.is_file()
-            and p.name.upper().startswith(("LICENSE", "COPYING", "NOTICE", "COPYRIGHT"))
+            and p.name.upper().startswith(("LICENSE", "LICENCE", "COPYING", "NOTICE", "COPYRIGHT"))
         ]
         texts = []
         for path in sorted(paths):
@@ -49,7 +49,7 @@ def collect(target):
                 "license": package["license"],
                 "notice_files": [str(p.relative_to(base)) for p in paths]
                 + [n["url"] for n in extra.get("notices", [])],
-                "source_repository": package["repository"],
+                "source_repository": package["repository"] or extra.get("repository"),
                 "source_revision": extra.get("revision") or vcs.get("git", {}).get("sha1"),
                 "source_offer": extra.get("source_offer"),
             }
@@ -81,6 +81,11 @@ def collect(target):
             }
         )
     )
+
+    if any(not item["license"] or not item["notice_files"] for item in inventory):
+        raise SystemExit(
+            "Native dependency notices are incomplete; add exact-revision upstream notices before packaging."
+        )
 
 
 if __name__ == "__main__":

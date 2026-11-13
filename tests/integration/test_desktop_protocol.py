@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -75,6 +76,20 @@ def test_native_protocol_one_use_auth_eof_and_reopen(tmp_path):
             client.headers["Authorization"] = f"Bearer {login.json()['access_token']}"
             assert client.get("/api/project").status_code == 200
             assert client.get("/api/jobs").json() == []
+            source = project / "source.csv"
+            source.write_text("id,value\n0001,42\n", encoding="utf-8")
+            job = client.post(
+                "/api/jobs", json={"operation": "preview", "path": str(source)}
+            ).json()["id"]
+            deadline = time.monotonic() + 20
+            while True:
+                result = client.get(f"/api/jobs/{job}").json()
+                if result["state"] not in {"QUEUED", "RUNNING"}:
+                    break
+                assert time.monotonic() < deadline, "Native control pipe blocked a worker"
+                time.sleep(0.05)
+            assert result["state"] == "SUCCEEDED", result
+            assert result["result"]["rows"] == [{"id": "0001", "value": "42"}]
     finally:
         stop(child)
     assert child.returncode == 0

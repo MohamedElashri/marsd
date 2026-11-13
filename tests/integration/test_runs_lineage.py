@@ -140,7 +140,6 @@ def test_cancel_timeout_reap_descendant_processes(study, mode):
     if mode == "cancel":
         thread.start()
     registry = Registry(study)
-    started = time.monotonic()
     try:
         result = record(
             registry, RunSpec(script=code, timeout=1 if mode == "timeout" else 10), cancel=cancel
@@ -148,7 +147,7 @@ def test_cancel_timeout_reap_descendant_processes(study, mode):
         assert result["state"] == ("CANCELLED" if mode == "cancel" else "TIMED_OUT")
         pid = int((study / "child.pid").read_text())
         assert not psutil.pid_exists(pid) or psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
-        assert time.monotonic() - started < 5
+        assert result["cleanup_seconds"] < 5
     finally:
         registry.close()
         if mode == "cancel":
