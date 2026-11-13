@@ -1,4 +1,5 @@
 import importlib
+import subprocess
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -33,6 +34,24 @@ def test_document_anchors_handle_duplicates_and_ignore_code(checks):
         "read",
         "read-1",
     }
+
+
+def test_source_fingerprint_ignores_local_files_but_detects_tracked_edits(
+    checks, tmp_path, monkeypatch
+):
+    module = importlib.import_module("source_checkpoint")
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    (tmp_path / "src").mkdir()
+    source = tmp_path / "src/module.py"
+    source.write_text("value = 1\n")
+    (tmp_path / ".gitignore").write_text("src/local-only.txt\n")
+    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", ".gitignore", "src/module.py"], check=True)
+    before = module.checkpoint()
+    (tmp_path / "src/local-only.txt").write_text("Local-only content\n")
+    assert module.checkpoint() == before
+    source.write_text("value = 2\n")
+    assert module.checkpoint()["sha256"] != before["sha256"]
 
 
 @pytest.mark.parametrize(

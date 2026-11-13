@@ -2,6 +2,7 @@
 
 import hashlib
 import importlib
+import io
 import json
 import subprocess
 import tarfile
@@ -25,7 +26,13 @@ def artifacts(tmp_path, monkeypatch, pipeline):
     monkeypatch.setattr(pipeline, "ROOT", root)
     source = {"sha256": "a" * 64, "files": 1}
     monkeypatch.setattr(pipeline, "checkpoint", lambda: source)
-    monkeypatch.setattr(pipeline, "git", lambda *args: "b" * 40)
+    monkeypatch.setattr(
+        pipeline,
+        "git",
+        lambda *args: (
+            "tests/test_release_pipeline.py\0" if args == ("ls-files", "-z") else "b" * 40
+        ),
+    )
     incoming = tmp_path / "incoming"
 
     def write(path, value):
@@ -240,6 +247,24 @@ def test_release_rejects_wheel_changed_after_testing(pipeline, artifacts):
         incoming / "validation-ubuntu-24.04-python-3.12/dist/marsd-0.1.0-py3-none-any.whl"
     ).write_bytes(b"changed wheel")
     with pytest.raises(ValueError, match="Distribution changed after verification"):
+        pipeline.assemble(incoming, output, "v0.1.0", "b" * 40)
+
+
+@pytest.mark.parametrize("name", ["local-notes.txt", ".env", "docs/local-only.md"])
+def test_release_rejects_untracked_source_archive_files(pipeline, artifacts, name):
+    incoming, output, _ = artifacts
+    directory = incoming / "validation-ubuntu-24.04-python-3.12"
+    source = directory / "dist/marsd-0.1.0.tar.gz"
+    with tarfile.open(source, "w:gz") as archive:
+        entry = tarfile.TarInfo(f"marsd-0.1.0/{name}")
+        content = b"Local-only content\n"
+        entry.size = len(content)
+        archive.addfile(entry, io.BytesIO(content))
+    path = directory / "platform-evidence.json"
+    report = json.loads(path.read_text())
+    report["distribution_hashes"][source.name] = pipeline.sha256(source)
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="untracked or non-regular"):
         pipeline.assemble(incoming, output, "v0.1.0", "b" * 40)
 
 

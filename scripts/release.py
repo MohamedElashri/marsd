@@ -237,11 +237,20 @@ def assemble(incoming, output, tag, commit):
             f"Distribution changed after verification: {name}",
         )
         copy(primary / "dist" / name, name)
+    tracked = set(filter(None, git("ls-files", "-z").split("\0")))
     with tarfile.open(output / f"{prefix}.tar.gz") as archive:
-        require(
-            not any(Path(name).name.lower() == "plan.md" for name in archive.getnames()),
-            "Private plan found in source distribution",
-        )
+        for member in archive.getmembers():
+            if member.isdir() and member.name.rstrip("/") == prefix:
+                continue
+            require(member.name.startswith(prefix + "/"), "Unexpected source archive root")
+            name = member.name.removeprefix(prefix + "/").rstrip("/")
+            require(
+                member.isfile()
+                and (name in tracked or name == "PKG-INFO")
+                or member.isdir()
+                and any(path.startswith(name + "/") for path in tracked),
+                "Source archive contains an untracked or non-regular file",
+            )
 
     runtimes, installs, dependencies = {}, {}, {}
     for target, (suffix, pattern) in TARGETS.items():

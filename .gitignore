@@ -1,9 +1,27 @@
 .venv/
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 __pycache__/
 *.pyc
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.tsbuildinfo
+*.log
 web/node_modules/
 web/test-results/
 web/playwright-report/
@@ -12,7 +30,8 @@ build/
 *.egg-info/
 demo/
 .DS_Store
-/plan.md
+Thumbs.db
+Desktop.ini
 
 desktop/runtime/
 desktop/build/

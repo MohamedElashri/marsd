@@ -2,46 +2,15 @@
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP = {
-    "node_modules",
-    "target",
-    "__pycache__",
-    "test-results",
-    "playwright-report",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-}
 
 
 def checkpoint():
-    files = []
-    for directory in [".github", "src", "scripts", "tests", "web", "desktop", "docs"]:
-        for path in (ROOT / directory).rglob("*"):
-            if (
-                path.is_file()
-                and not path.is_relative_to(ROOT / "desktop/runtime")
-                and not path.is_relative_to(ROOT / "desktop/build")
-                and not path.is_relative_to(ROOT / "desktop/src-tauri/gen")
-                and not any(part in SKIP for part in path.relative_to(ROOT).parts)
-            ):
-                files.append(path)
-    files.extend(
-        ROOT / name
-        for name in [
-            ".gitignore",
-            ".gitattributes",
-            ".python-version",
-            ".sanad.toml",
-            "LICENSE",
-            "README.md",
-            "pyproject.toml",
-            "uv.lock",
-        ]
-    )
+    names = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT, encoding="utf-8")
+    files = [ROOT / name for name in names.split("\0") if name]
     digest = hashlib.sha256()
     for path in sorted(files, key=lambda p: p.relative_to(ROOT).as_posix()):
         digest.update(
