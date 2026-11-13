@@ -173,7 +173,8 @@ def check(backend):
                         "job": result,
                         "backend_stderr": error_log.read_text(encoding="utf-8", errors="replace"),
                     }
-                    # Cancel a second, queued operation while one worker starts.
+                    # The second job can start before DELETE reaches the backend.
+                    # Active cancellation is cooperative; require terminal cleanup within 5 s.
                     first = client.post(
                         "/api/jobs",
                         json={"operation": "inspect", "path": str(project / "data/run_041.h5")},
@@ -182,7 +183,13 @@ def check(backend):
                         "/api/jobs",
                         json={"operation": "inspect", "path": str(project / "data/run_042.h5")},
                     ).json()["id"]
-                    assert client.delete(f"/api/jobs/{queued}").json()["state"] == "CANCELLED"
+                    cancelled = client.delete(f"/api/jobs/{queued}").json()
+                    cancel_deadline = time.monotonic() + 5
+                    while cancelled["state"] in {"QUEUED", "RUNNING"}:
+                        assert time.monotonic() < cancel_deadline, cancelled
+                        time.sleep(0.05)
+                        cancelled = client.get(f"/api/jobs/{queued}").json()
+                    assert cancelled["state"] == "CANCELLED", cancelled
                     descendants = psutil.Process(child.pid).children(recursive=True)
                     if cycle == 0:
                         client.delete(f"/api/jobs/{first}")
