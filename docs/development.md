@@ -1,10 +1,10 @@
-# Development
+# Development and releases
 
-[Back to README](../README.md)
+[README](../README.md) · [Usage](usage.md)
 
 ## Setup
 
-Use Python 3.12 or 3.13 and Node within the range declared in `web/package.json` (22.12 or newer, below 27). Run each command separately; they also work in PowerShell:
+Python requirements live in [project metadata](../pyproject.toml), Node requirements in [the frontend package](../web/package.json), and native toolchains/runner targets in [desktop CI](../.github/workflows/desktop.yml). Lockfiles and the [runtime bootstrap](../scripts/prepare_desktop_python.py) define tested dependency versions and interpreter checksums.
 
 ```sh
 uv sync --locked --extra dev
@@ -12,53 +12,28 @@ npm --prefix web ci --ignore-scripts
 npm --prefix web run build
 ```
 
-Static UI assets are checked in so the Python distribution works without Node at runtime. Rebuild them after frontend changes. `uv.lock`, npm and Cargo lockfiles pin tested dependencies. Product versions start at **0.1.0**; SQLite/API schemas and contract revisions have independent compatibility meaning.
+Rebuild checked-in static assets after frontend changes. CLI, browser and desktop share the Python service layer and project format. SQLite has one writer per project; bounded scientific reads use spawned workers. Tauri loads the packaged UI and keeps credentials in Rust, exposing a scoped bridge rather than general shell/filesystem access.
 
-## Architecture
-
-| Location | Responsibility |
-|---|---|
-| `src/marsd/` | Shared Python services, CLI/SDK/API, scientific adapters and persistence |
-| `src/marsd/migrations/` | Numbered SQLite migrations with backup/recovery |
-| `src/marsd/schemas/` | Generated request/contract/run/lineage schemas |
-| `web/` | React/TypeScript workspace and browser tests |
-| `desktop/` | Tauri shell, frozen-runtime recipe, icons and native license supplements |
-| `scripts/` | Build, licensing, documentation and platform verification |
-| `tests/` | Unit, integration, security and controlled performance cases |
-
-CLI, browser and desktop use one service layer and project format. SQLite has one writer per project; long scientific reads run in explicit spawned workers. Source access is read-only through adapters; selected trusted scripts remain outside a sandbox guarantee. FastAPI binds only to loopback and protects read/write data APIs with session, Host and Origin checks.
-
-The native shell loads one packaged UI. Rust retains credentials and proxies bounded same-owner requests; JavaScript receives no general shell/filesystem capability. Native-owner death and control-pipe EOF tear down owned workers and release the project lock.
-
-Interactive requests default to 30 s, at most one active scan/eight waiting jobs, 256 MiB decoded batches and an 800 MiB monitored process-tree memory budget. JSON requests/responses cap at 1 MiB/8 MiB. Cancellation has a two-second cooperative grace and five-second cleanup target. Native libraries can overshoot before monitoring reacts; these are supervised limits, not hard OS isolation.
-
-## Verification
+## Checks and contributions
 
 ```sh
 uv run ruff check .
-uv run ruff format --check .
 uv run mypy src/marsd
 uv run python scripts/generate_api.py --check
 uv run python scripts/check_docs.py
 uv run pytest -q -m "not performance"
-uv run pytest -q -m performance -s
 npm --prefix web run lint
 npm --prefix web exec -- playwright install chromium
 npm --prefix web run test:e2e
-uv build
-uv run python scripts/check_wheel.py
-uv run python scripts/check_installed.py
 ```
 
-`generate_api.py --check` also verifies product versions across Python/npm/lock/Cargo/Tauri metadata. `check_docs.py` checks local documentation links. Wheel checks select the exact configured version. `check_installed.py --wheelhouse DIRECTORY` verifies installation without network access as well as offline runtime and source-preserving uninstall.
+[Core CI](../.github/workflows/ci.yml) is the full verification/packaging recipe, including controlled performance and clean installed-wheel checks. [Native CI](../.github/workflows/desktop.yml) verifies frozen runtimes, installers and lifecycle on every build target. Reports, inventories, screenshots and source fingerprints are retained as run artifacts. A green runner verifies that environment, not every user-machine configuration.
 
-The browser test uses an isolated synthetic project and blocks external requests. CI runs Python 3.12/3.13 on macOS ARM64, Ubuntu x86_64 and native Windows x86_64, including 100-artifact browser startup budgets. Performance cases cover unfavorable HDF5 chunks, physically populated versus logical large arrays, metadata traversal and a 10,000-node/30,000-edge graph. Generated large fixtures are never committed.
-
-[Core checks](https://github.com/MohamedElashri/marsd/actions/workflows/ci.yml) and [native desktop checks](https://github.com/MohamedElashri/marsd/actions/workflows/desktop.yml) retain platform/interpreter evidence, source fingerprints, test reports, license inventories and applicable screenshots/build artifacts. A green runner verifies that environment, not every user-machine configuration. Changes to Actions workflows also require Sanad 1.1+ and `sanad check --base origin/main`; see the [dependency policy](releasing.md).
+Keep changes focused, use synthetic fixtures and add regression coverage for meaningful behavior changes. Describe scientific assumptions, compatibility changes and relevant verification in the pull request. Regenerate schemas/assets when their sources change. Keep user behavior in [usage](usage.md); link to configuration for requirements instead of copying version numbers or limits. Build outputs, reports and local planning notes stay out of Git and source packages.
 
 ## Native builds
 
-Build on the target OS; Python runtimes are not cross-compiled. CI uses Rust 1.99.1, portable CPython 3.12.16 build 20261110, and target-specific compilers and packaging tools. The bootstrap script pins and checksums each interpreter archive before executing it.
+Build on the target OS with its native compiler/packaging tools; Python runtimes are not cross-compiled. Follow the prerequisite recipe in desktop CI, then:
 
 ```sh
 python scripts/prepare_desktop_python.py --directory NEW_DIRECTORY
@@ -66,26 +41,41 @@ uv sync --locked --all-extras --python INTERPRETER_PATH
 uv run python scripts/build_desktop.py
 ```
 
-Use the interpreter path reported by the first command. Build prerequisites are Xcode command-line tools on macOS, MSVC on Windows, and the GTK/WebKitGTK development stack plus packaging tools on Ubuntu. The exact installation recipe is in `.github/workflows/desktop.yml`.
+Use the interpreter path reported by the bootstrap. The builder freezes Python/scientific libraries, audits macOS deployment paths/minima, gathers notices and invokes Tauri. Generated directories are ignored. Native test drivers are never shipped; inventories are not a complete native-library SBOM or legal certification.
 
-| Target | Artifact | Runtime baseline |
-|---|---|---|
-| macOS ARM64 | `.app` / `.dmg` | macOS 15+, system WKWebView |
-| Windows x86_64 | Per-user NSIS | Windows 11, WebView2 |
-| Linux x86_64 | `.deb` | Ubuntu 24.04, glibc 2.39, GTK 3, WebKitGTK 4.1 |
+## Actions dependencies
 
-`build_desktop.py` builds shared assets, freezes the backend, audits macOS deployment minima and native paths, collects notices and invokes Tauri. `--backend-only` freezes just the runtime; `--skip-frontend` assumes assets are already rebuilt. Generated runtime/build/target/schema directories are ignored and excluded from source archives.
+Use the [latest Sanad release](https://github.com/MohamedElashri/sanad/releases/latest). [Sanad policy](../.sanad.toml) and the [native Actions lockfile](../.github/workflows/actions.lock) are authoritative for source approvals and execution pins. After editing workflows:
 
-Run `scripts/check_desktop_runtime.py --backend ABSOLUTE_EXECUTABLE --output EVIDENCE.json` to verify a copied Unicode/spaces installation with developer tools removed from PATH. Native Rust tests include an explicitly selected frozen lifecycle/proxy integration, using `MARSD_TEST_BACKEND` to identify the executable. CI tests installed Windows WebView2/Linux WebKitGTK through test-only platform drivers, including same-version replacement and project-preserving uninstall. Drivers are not shipped in the application.
+```sh
+sanad sync
+sanad sync --write
+sanad check --base origin/main
+```
 
-Native builds bundle Python/CPython/application notices, JS notices, target Rust inventory and exact-revision supplemental license texts. Missing Rust license declarations or notice files fail packaging. Inventory declarations do not replace a complete native-library/license review.
+Review the preview before writing and use the actual fetched trusted base. Commit every reported managed file; never edit lockfile pins by hand. New source approvals must reach the trusted base before a dependency PR introduces them. External reusable workflows use their defining repository's lockfile; review Sanad's coverage warnings before enabling the updater. Action pins do not cover runner images, runtime downloads or package dependencies.
 
-## Contributing
+## Releases
 
-Keep changes focused on an observed need. Add regression coverage for meaningful behavior changes and run applicable checks. Preserve exact numeric semantics, explicit coverage, typed evidence and source-data safety. Include commands, environment and relevant results in the pull request. Use synthetic fixtures; omit credentials and confidential scientific data.
+[Prepare release](../.github/workflows/release.yml) runs for a version tag matching project metadata on the default branch. It requires core, native and online Sanad checks, verifies artifact/source hashes, then assembles the tested Python distributions and all desktop targets into an experimental draft. The draft includes a manifest, checksums, notices, inventories and verification evidence. Existing releases are not overwritten and publication is manual.
 
-Keep user documentation concise and current. Update the usage guide when behavior changes and regenerate schemas/assets when required. Runtime data, build outputs, test reports and local planning notes do not belong in Git or source packages.
+1. Review the source and checks; create and push the matching version tag.
+2. Inspect the draft's source identity, complete target set, evidence and `SHA256SUMS`.
+3. Enable [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases) before publication. Attach everything first; publishing locks the tag/assets.
+4. Publish the intended draft, preserving experimental status until supported-release requirements are met. Verify its release attestation/assets and rehearse installation from downloaded packages.
 
-## Release requirements
+Use the specific candidate tag for retries and publication:
 
-Follow the [release process](releasing.md) for Actions orchestration, artifact verification, Sanad setup and publication requirements. Desktop distribution remains experimental; green CI does not replace signing, minimum-OS/offline qualification or independent scientist-user review.
+```sh
+gh workflow run release.yml --ref TAG
+gh release edit TAG --draft=false --prerelease
+```
+
+If upload leaves a partial draft, inspect/delete that draft before retrying, preserving the tag. Never replace published assets or reuse an immutable tag. See [installation](../README.md#get-started) for published releases.
+
+| Optional automation | Required setup |
+|---|---|
+| Build provenance | Confirm [GitHub attestation entitlement](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations), then set `MARSD_BUILD_ATTESTATIONS=true`. Failure blocks draft creation. |
+| Scheduled dependency PRs | Review external-workflow coverage; supply repository-scoped `SANAD_TOKEN` with Contents, Workflows and Pull requests write permissions, then set `SANAD_UPDATES_ENABLED=true`. The built-in token cannot push workflow edits. |
+
+Updater automation stays disabled until configured and never auto-merges. PyPI publication, repository visibility and signing credentials are separate maintainer decisions. Before calling desktop builds supported, complete minimum-OS/offline/native-dialog qualification, signing/notarization/SmartScreen/package-trust review, independent scientist-user walkthroughs and distribution-license review. Keep release-specific requirements and compatibility results in the release notes.

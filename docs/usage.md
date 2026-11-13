@@ -1,10 +1,12 @@
 # Using Marsd
 
-[Back to README](../README.md)
+[README](../README.md) · [Development](development.md)
 
-## Projects and source files
+## Install and open a project
 
-Create a project with an explicitly approved source root, register files by reference, then open the workspace:
+See the [download and source-install instructions](../README.md#get-started). Desktop packages bundle Python; Python installations use the requirements declared in [project metadata](../pyproject.toml). Builds target macOS ARM64, Windows x86_64 and Ubuntu Linux x86_64. Release notes describe compatibility and signing; [desktop configuration](../desktop/src-tauri/tauri.conf.json) declares native runtime dependencies.
+
+Create a project with an existing local source directory:
 
 ```sh
 uv run marsd project create ./study --source-root ./measurements
@@ -12,16 +14,13 @@ uv run marsd project register ./measurements/sample.h5 --project ./study
 uv run marsd open ./study
 ```
 
-Use existing local directories for source roots. Network shares and actively synchronized cloud folders are unsupported. One writer owns a project; stop the browser server, or close the desktop project in Settings, before running writing CLI commands. Read-only lists can coexist with the UI.
+One writer owns a project. Stop the browser server with Ctrl-C, or close the desktop project in Settings, before issuing writing CLI commands. Read-only lists can coexist with the UI. Network shares and actively synchronized cloud folders are unsupported.
 
-Project metadata lives in `.marsd`. Source files stay in their original locations. File identity is explicit: stat-based observations are weak, and `project register --sha256` opts into a full content hash. Changed or missing files are labeled rather than silently replacing a selected version.
+## Explore, compare and validate
 
-## Inspect, compare and validate
-
-The synthetic project from the [quick start](../README.md) includes independent expected outcomes:
+Using the synthetic project from the README:
 
 ```sh
-uv run marsd nodes ./demo/data/run_042.h5 --project ./demo --node /measurement
 uv run marsd preview ./demo/data/run_042.h5 --project ./demo --node /measurement/transmission --select 0:8,0:8 --json
 uv run marsd diff ./demo/data/run_041.parquet ./demo/data/run_042.parquet --project ./demo --keys device_id,wavelength_nm --json
 uv run marsd validate ./demo/data/run_042.parquet --project ./demo --contract ./demo/contracts/measurement.yaml --json
@@ -29,42 +28,31 @@ uv run marsd reports list --project ./demo
 uv run marsd reports export REPORT_ID --project ./demo --format html
 ```
 
-The comparison and `run_042` validation intentionally exit with code 1. Reports are versioned JSON or escaped standalone HTML, saved under `.marsd/reports`.
+The comparison and validation intentionally exit with code 1. The other sample table passes the same contract. Reports live under `.marsd/reports`.
 
-| Format | Supported reads | Important limits |
-|---|---|---|
-| HDF5 | Hierarchy, metadata and numeric/bool scalar, 1-D or 2-D selections | Unsupported dtypes can be metadata-only. External links/storage, virtual datasets and filter plugins are excluded. |
-| Parquet | Single-file schema, primitive-column preview/profile/compare | No partitioned directories; nested value operations can be unsupported. |
-| CSV | UTF-8/BOM, explicit delimiter/header/null policy and projected streaming reads | Default strings preserve leading zeros. Typed parsing needs an explicit schema or contract. |
+HDF5 supports hierarchy/metadata and numeric or boolean slices; excluded links, external storage, virtual datasets and filter plugins are not followed. Parquet supports single files and primitive columns. CSV defaults to strings to preserve leading zeros; typed parsing needs an explicit policy or contract. Unsupported operations and bounded coverage are visible in results.
 
-Tables return at most 1,000 rows and plots at most 10,000 points/cells. Requested scope, visited work, truncation and source consistency remain visible. Comparisons require explicit unique non-null keys or deliberate positional alignment; arrays require compatible paths/shapes and an explicit selection. Integer comparisons preserve precision beyond 2^53. Unit conversion is opt-in and recorded.
+Comparisons require explicit unique non-null keys or deliberate positional alignment; arrays need compatible paths/shapes and a selection. Integer precision is preserved and unit conversion is opt-in. Contracts use a [closed rule schema](../src/marsd/schemas/contract.json), without executable expressions or remote references. `PASS` requires complete requested coverage; missing evidence is `INCONCLUSIVE`, witnessed violations are `FAIL` and operational failures are `ERROR`. A successful sample cannot prove whole-file validity.
 
-Contracts support required fields/paths, dtype, shape, nullability, numeric range, unit compatibility, uniqueness and membership in an explicit local reference set. No executable expressions or remote references are accepted. Print the complete schema with `uv run marsd contract-schema`.
-
-`PASS` requires complete requested coverage. Known violations are `FAIL`; insufficient evidence is `INCONCLUSIVE`; operational failures are `ERROR`. Samples cannot establish whole-file validity. In comparisons, one witnessed difference establishes `DIFFERENT`, while incomplete counts remain labeled.
-
-## Record trusted Python work
+## Record and trace trusted work
 
 ```sh
 uv run marsd run --project ./demo --input ./demo/data/identifiers.csv --output ./demo/outputs/analysis.csv -- python ./demo/pipeline/analyze.py
 uv run marsd runs list --project ./demo
-uv run marsd runs show RUN_ID --project ./demo
 uv run marsd runs diff RUN_A RUN_B --project ./demo --json
 uv run marsd runs replay RUN_ID --project ./demo --dry-run
 uv run marsd lineage RUN_ID --project ./demo --direction upstream --json
 ```
 
-The wrapper accepts the current interpreter and one approved `.py` script. It records deliberately declared inputs/outputs and explicit `marsd.sdk` instrumentation. It does not discover all file access or snapshot imported code and environments. Trusted scripts can write files and use the network.
+The wrapper accepts the current interpreter and an approved Python script. The generated example demonstrates explicit `marsd.sdk` hooks. Scripts can write files and use the network; instrumentation does not discover all I/O or snapshot code/environments. Failed outputs remain possibly partial. Arguments and process text are omitted by default; opt-in capture is bounded and redaction is best effort.
 
-The generated example uses `@instrument`, `input_file` and `output_file`. SDK helpers report scoped operations; ordinary `open()` calls remain unobserved. Output helpers create new files without overwriting existing ones. Failed or interrupted outputs remain possibly partial, including when a script catches an error and exits zero.
+Readiness never executes/imports target code or installs dependencies. It describes available evidence, not reproducibility. Lineage preserves observed, declared and inferred labels; missing or truncated links remain unknown. Downstream means potentially dependent, not scientifically invalid. Use `lineage-import` for explicit declarations and `impact` for downstream queries.
 
-Readiness checks never execute/import the target or install dependencies. `READY_WITH_LIMITATIONS`, `NOT_READY` and `UNKNOWN` describe available evidence, not reproducibility. Arguments and process text are omitted by default; opt-in capture is bounded and redaction is best effort.
+## Preserve and recover data
 
-Lineage uses actual version/run/entity IDs. Observed, declared and explicitly inferred links retain their labels; inferred links require deliberate inclusion. Bounded traversal reports incomplete coverage. Downstream means potentially dependent, not scientifically invalid. Import local declarations with `marsd lineage-import FILE --project PROJECT`; use `marsd impact ENTITY_ID` for downstream queries.
+Source files stay in place; metadata lives in `.marsd`. Stat-based observations are weak; `project register --sha256` opts into a full hash. Changed or missing sources never silently replace a selected version.
 
-## Backup, move and restore
-
-Stop the project writer first:
+Stop the writer before maintenance:
 
 ```sh
 uv run marsd project backup --project ./demo --name snapshot.sqlite
@@ -72,28 +60,14 @@ uv run marsd project restore ./demo/.marsd/reports/snapshot.sqlite --project ./d
 uv run marsd project remap-root OLD_ABSOLUTE_ROOT NEW_ABSOLUTE_ROOT --project ./demo
 ```
 
-Restore and remap preview by default; add `--apply` after review. Restore validates metadata and keeps a recovery snapshot. A trusted legacy backup lacking project identity needs `--allow-legacy`. Move/copy data yourself before remapping; remapping changes references, never source bytes. Foreign-OS roots require explicit local remapping.
+Restore/remap preview by default; add `--apply` after review. Restore keeps a recovery snapshot; trusted legacy backups lacking project identity require `--allow-legacy`. Move/copy data yourself before remapping. Backups contain metadata, not source data. Older projects migrate after a backup; unknown newer schemas are refused. Never copy a live SQLite file alone.
 
-Backups contain metadata, not source data. Manual backups/reports live in `.marsd/reports`; automatic migration/recovery snapshots live in `.marsd/backups`. Do not copy a live SQLite file alone. Existing schema 1–3 projects migrate to schema 4 after a backup; newer unknown schemas are refused.
+Reports/manual backups live in `.marsd/reports`; automatic backups live in `.marsd/backups`. `project cleanup` removes only abandoned metadata temporaries. Uninstall preserves project/source/output folders; deleting a project is a separate action.
 
-`marsd project cleanup --project PROJECT` removes only owned abandoned metadata temporaries. Uninstalling Marsd preserves project/source/output folders. Deleting a project is a separate action.
+## Desktop, offline use and errors
 
-## Desktop and offline use
+The bundled CLI is `marsd-backend` (`marsd-backend.exe` on Windows), under application resources `runtime/backend`. Substitute its full path for both `marsd` and `python` in examples. It uses bundled modules; other scientific dependencies need your own Python environment.
 
-Desktop builds bundle the runtime. The bundled CLI is `marsd-backend` (`marsd-backend.exe` on Windows) under application resources `runtime/backend`. Substitute its full path for both `marsd` and `python` in examples. Scripts can use bundled modules; use the Python distribution in your own environment for other scientific dependencies.
+For offline Python installation, export locked runtime requirements with `uv export --locked --no-dev --no-emit-project -o requirements.txt`. Download binary wheels on a connected machine matching the target OS/Python using `python -m pip download --only-binary=:all: --require-hashes -r requirements.txt -d wheelhouse`. Copy the requirements, wheelhouse and Marsd wheel, then install with `uv pip install --offline --no-index --find-links wheelhouse --requirements requirements.txt PATH_TO_MARSD_WHEEL`. Desktop system prerequisites must also be installed before going offline.
 
-For an offline Python install, export the tested requirements with `uv export --locked --no-dev --no-emit-project -o requirements.txt`. On a connected machine matching the target OS/Python, download binary wheels using `python -m pip download --only-binary=:all: --require-hashes -r requirements.txt -d wheelhouse`. Copy that wheelhouse, requirements and the built Marsd wheel, then install with `uv pip install --offline --no-index --find-links wheelhouse --requirements requirements.txt PATH_TO_MARSD_WHEEL`. A wheelhouse is specific to its platform/interpreter.
-
-Linux desktop needs GTK 3 and WebKitGTK 4.1 runtime packages installed before going offline. Windows builds embed the offline WebView2 installer. Experimental build artifacts are not signed release installers; see [release requirements](development.md).
-
-## Exit codes and troubleshooting
-
-| Exit | Meaning |
-|---|---|
-| 0 | Complete successful requested outcome |
-| 1 | Analytical difference or validation violation |
-| 2 | Usage/configuration error |
-| 3 | Operational error |
-| 4 | Inconclusive evidence |
-
-For `PROJECT_BUSY`, close the active writer. For stale-source errors, deliberately register/select the current observation. For budget errors, reduce the selection or scan scope. For an expired launch code, restart the server. `uv run marsd --help` and command-specific `--help` list all options.
+Exit codes are **0** complete success, **1** analytical difference/violation, **2** usage/configuration, **3** operational error and **4** inconclusive. For `PROJECT_BUSY`, close the writer; for stale-source errors, deliberately select the current observation; for budget errors, reduce scope; for an expired launch code, restart the server. `uv run marsd --help` and command-specific `--help` provide the full command reference.
