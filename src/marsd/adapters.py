@@ -11,6 +11,7 @@ from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
+from statistics import mean
 from typing import Any, Protocol, runtime_checkable
 
 from marsd.domain import MAX_BYTES, CSVPolicy, MarsdError, Request, dumps
@@ -66,7 +67,7 @@ def numeric_profile(values: list[Any]) -> dict[str, Any]:
         "finite_count": len(finite),
         "min": min(finite) if finite else None,
         "max": max(finite) if finite else None,
-        "mean": math.fsum(v / len(finite) for v in finite) if finite else None,
+        "mean": float(mean(finite)) if finite else None,
         "mean_precision": "float64_approximation",
     }
 

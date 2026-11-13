@@ -1,7 +1,9 @@
 """Verify the wheel carries runtime UI, migration, schema and licensing resources."""
 
+import re
 import tomllib
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 from zipfile import ZipFile
 
 root = Path(__file__).resolve().parents[1]
@@ -35,6 +37,15 @@ def check(wheel):
         assert any(n.startswith("marsd/static/assets/") and n.endswith(".js") for n in names)
         assert any(n.startswith("marsd/static/assets/") and n.endswith(".css") for n in names)
         assert any(n.endswith("/licenses/LICENSE") for n in names)
+        html = archive.read("marsd/static/index.html").decode("utf-8")
+        for reference in re.findall(r'(?:src|href)="([^"]+)"', html):
+            link = urlsplit(reference)
+            assert not link.scheme and not link.netloc, (
+                f"UI requires an external resource: {reference}"
+            )
+            path = unquote(link.path).lstrip("/")
+            assert ".." not in path.split("/"), f"UI resource escapes its bundle: {reference}"
+            assert f"marsd/static/{path}" in names, f"Missing referenced UI asset: {reference}"
     print(f"Wheel resources verified: {wheel.name}")
 
 

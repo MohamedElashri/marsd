@@ -336,6 +336,8 @@ def assemble(incoming, output, tag, commit):
         "Local HDF5/Parquet/CSV investigation, contracts, trusted Python run evidence and bounded lineage.\n\n"
         "Desktop installers are unsigned/ad-hoc experimental builds. Signing/notarization, minimum-OS/offline prerequisite and native-dialog qualification remain open. Windows Server/X11 runner checks do not certify Windows 11, Wayland or every user machine.\n\n"
         "Installers bundle Python; the Python wheel requires Python 3.12 or 3.13. No PyPI publication or automatic updater is included. See README and docs/usage.md at this tag.\n\n"
+        "Review native dependency advisories and qualification limits before publication: "
+        f"https://github.com/{os.environ.get('GITHUB_REPOSITORY', 'MohamedElashri/marsd')}/blob/{tag}/docs/development.md#native-builds\n\n"
         "Actions dependency protection: online-verified native locking.\n\n"
         "SHA256SUMS covers every attached payload except itself. Review the manifest, dependency inventory and verification report before publishing.\n",
         encoding="utf-8",

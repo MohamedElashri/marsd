@@ -26,7 +26,7 @@ Marsd is a local scientific data workbench for **HDF5, Parquet and CSV**. Files 
 
 ## Get started
 
-Choose a package from the [latest release](https://github.com/MohamedElashri/marsd/releases/latest). GitHub's latest route selects stable releases; experimental prereleases appear under [all releases](https://github.com/MohamedElashri/marsd/releases). Read the release notes for platform requirements and signing status. Desktop builds remain experimental.
+Download a desktop package from the [latest release](https://github.com/MohamedElashri/marsd/releases/latest). GitHub's latest route selects stable releases; experimental prereleases appear under [all releases](https://github.com/MohamedElashri/marsd/releases). Desktop builds are experimental. Check the release notes for platform requirements and signing status, and verify downloads against the attached `SHA256SUMS`.
 
 To run from source, install [uv](https://docs.astral.sh/uv/getting-started/installation/) and run:
 

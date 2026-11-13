@@ -1,3 +1,4 @@
+import sys
 from fractions import Fraction
 
 import h5py
@@ -6,10 +7,26 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from marsd.adapters import Dataset
+from marsd.adapters import Dataset, numeric_profile
 from marsd.contracts import Contract, validate
 from marsd.domain import Request
 from marsd.explore import compare, equal_value, unit_relation
+
+
+@pytest.mark.parametrize(
+    "values,expected",
+    [
+        ([sys.float_info.max] * 3, sys.float_info.max),
+        ([-sys.float_info.max] * 3, -sys.float_info.max),
+        ([sys.float_info.max, sys.float_info.max, -sys.float_info.max], sys.float_info.max / 3),
+        ([5e-324] * 3, 5e-324),
+        ([2**53 + 1, -(2**53)], 0.5),
+    ],
+)
+def test_profile_mean_handles_finite_extremes_and_integer_cancellation(values, expected):
+    result = numeric_profile(values)
+    assert result["mean"] == expected
+    assert result["finite_count"] == len(values)
 
 
 @pytest.mark.parametrize("value", [123, ["nm"], np.array(["nm"]), {}, b"\xff", ""])

@@ -12,7 +12,7 @@ npm --prefix web ci --ignore-scripts
 npm --prefix web run build
 ```
 
-Rebuild checked-in static assets after frontend changes. CLI, browser and desktop share the Python service layer and project format. SQLite has one writer per project; bounded scientific reads use spawned workers. Tauri loads the packaged UI and keeps credentials in Rust, exposing a scoped bridge rather than general shell/filesystem access.
+Rebuild and commit static assets after frontend changes. CLI, browser and desktop share the Python service layer and project format. SQLite has one writer per project; bounded scientific reads use spawned workers. Tauri loads the packaged UI and keeps credentials in Rust, exposing a scoped bridge rather than general shell/filesystem access.
 
 ## Checks and contributions
 
@@ -27,21 +27,23 @@ npm --prefix web exec -- playwright install chromium
 npm --prefix web run test:e2e
 ```
 
-[Core CI](../.github/workflows/ci.yml) is the full verification/packaging recipe, including controlled performance and clean installed-wheel checks. [Native CI](../.github/workflows/desktop.yml) verifies frozen runtimes, installers and lifecycle on every build target. Reports, inventories, screenshots and source fingerprints are retained as run artifacts. A green runner verifies that environment, not every user-machine configuration.
+[Core CI](../.github/workflows/ci.yml) is the full verification/packaging recipe, including controlled performance and clean installed-wheel checks. [Native CI](../.github/workflows/desktop.yml) verifies frozen runtimes, installers and lifecycle on every build target. Reports, inventories, screenshots and source fingerprints are retained as run artifacts. Passing CI verifies its runner environments; it does not certify every user machine.
 
-Keep changes focused, use synthetic fixtures and add regression coverage for meaningful behavior changes. Describe scientific assumptions, compatibility changes and relevant verification in the pull request. Regenerate schemas/assets when their sources change. Keep user behavior in [usage](usage.md); link to configuration for requirements instead of copying version numbers or limits. Build outputs, reports and local planning notes stay out of Git and source packages.
+Use synthetic fixtures and regression tests for behavior changes. Describe assumptions, compatibility impacts and verification. Regenerate changed schemas/assets. Keep user guidance in [usage](usage.md) and link to configuration for requirements. Keep build outputs and local planning notes out of Git and source packages.
 
 ## Native builds
 
 Build on the target OS with its native compiler/packaging tools; Python runtimes are not cross-compiled. Follow the prerequisite recipe in desktop CI, then:
 
 ```sh
-python scripts/prepare_desktop_python.py --directory NEW_DIRECTORY
+uv run python scripts/prepare_desktop_python.py --directory NEW_DIRECTORY
 uv sync --locked --all-extras --python INTERPRETER_PATH
 uv run python scripts/build_desktop.py
 ```
 
 Use the interpreter path reported by the bootstrap. The builder freezes Python/scientific libraries, audits macOS deployment paths/minima, gathers notices and invokes Tauri. Generated directories are ignored. Native test drivers are never shipped; inventories are not a complete native-library SBOM or legal certification.
+
+The Linux GTK dependency tree has an unresolved [GLib iterator safety advisory](https://rustsec.org/advisories/RUSTSEC-2024-0429.html) and an [unmaintained build-time macro dependency](https://rustsec.org/advisories/RUSTSEC-2024-0370.html). No affected iterator references were found outside GLib in the reviewed locked sources; that is not a safety proof. The current stable Tauri stack has no compatible patched GLib upgrade. Reassess before publication; retain experimental status while these constraints remain.
 
 ## Actions dependencies
 
