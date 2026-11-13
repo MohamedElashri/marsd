@@ -1,12 +1,14 @@
 """Record a successful matrix cell from actual test reports; never invent native results."""
 
 import argparse
+import hashlib
 import json
 import platform
 import sys
 from pathlib import Path
 from xml.etree import ElementTree
 
+from check_wheel import current_wheel
 from source_checkpoint import checkpoint
 
 
@@ -25,9 +27,16 @@ def record(junit: Path, browser: Path):
     )
     if not good:
         raise SystemExit("Failed or missing tests cannot produce passing platform evidence")
+    wheel = current_wheel()
+    source = wheel.parent / wheel.name.replace("-py3-none-any.whl", ".tar.gz")
+    hashes = {}
+    for artifact in (wheel, source):
+        with artifact.open("rb") as stream:
+            hashes[artifact.name] = hashlib.file_digest(stream, "sha256").hexdigest()
     return {
         "schema_version": 1,
         "source_checkpoint": checkpoint(),
+        "distribution_hashes": hashes,
         "platform": platform.system(),
         "architecture": platform.machine(),
         "python": ".".join(map(str, sys.version_info[:3])),

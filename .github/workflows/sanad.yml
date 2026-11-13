@@ -1,0 +1,32 @@
+name: Sanad dependencies
+on:
+  push:
+    branches: [main]
+    paths: ['.github/**', '.sanad.toml']
+  pull_request:
+    paths: ['.github/**', '.sanad.toml']
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: sanad
+        uses: MohamedElashri/sanad@v1.1.0
+        with:
+          mode: check
+          base: ${{ github.event.pull_request.base.sha || (github.event_name == 'push' && github.ref_type == 'branch' && github.event.before) || format('origin/{0}', github.event.repository.default_branch) }}
+      - if: always() && steps.sanad.outputs.report-path != ''
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: sanad-report
+          path: ${{ steps.sanad.outputs.report-path }}
+          if-no-files-found: error
+          retention-days: 14

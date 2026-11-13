@@ -76,6 +76,8 @@ Desktop builds bundle Python and scientific libraries. Native CI verifies all th
 
 Start with the [development guide](docs/development.md) for setup, architecture and verification. Keep changes focused, include relevant regression coverage and describe scientific assumptions or compatibility changes. Use synthetic data in examples and bug reports.
 
+Maintainers: see the [release process](docs/releasing.md) for version tags, verified draft assets and Sanad dependency policy.
+
 ## License
 
 [Apache License 2.0](LICENSE). Distributed dependencies retain their own licenses and notices.

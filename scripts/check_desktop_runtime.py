@@ -247,9 +247,18 @@ def check(backend):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", type=Path, required=True)
+    parser.add_argument(
+        "--package", type=Path, help="Installer/disk image from which this runtime was copied"
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     result = check(args.backend.resolve())
+    if args.package:
+        with args.package.open("rb") as stream:
+            result["package_sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
+        result["scope"] = (
+            "Frozen runtime copied from the identified native package; native GUI/dialog qualification is separate."
+        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result))

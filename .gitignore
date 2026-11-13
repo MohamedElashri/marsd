@@ -21,7 +21,11 @@ desktop/src-tauri/gen/
 test-results.xml
 platform-evidence.json
 desktop-runtime-evidence.json
+desktop-package-evidence.json
 dependency-inventory.json
 performance-results.xml
 desktop-install-evidence.*
 msedgedriver.exe
+incoming/
+release-assets/
+.github/sanad/reports/

@@ -54,7 +54,7 @@ uv run python scripts/check_installed.py
 
 The browser test uses an isolated synthetic project and blocks external requests. CI runs Python 3.12/3.13 on macOS ARM64, Ubuntu x86_64 and native Windows x86_64, including 100-artifact browser startup budgets. Performance cases cover unfavorable HDF5 chunks, physically populated versus logical large arrays, metadata traversal and a 10,000-node/30,000-edge graph. Generated large fixtures are never committed.
 
-[Core checks](https://github.com/MohamedElashri/marsd/actions/workflows/ci.yml) and [native desktop checks](https://github.com/MohamedElashri/marsd/actions/workflows/desktop.yml) retain platform/interpreter evidence, source fingerprints, test reports, license inventories and applicable screenshots/build artifacts. A green runner verifies that environment, not every user-machine configuration.
+[Core checks](https://github.com/MohamedElashri/marsd/actions/workflows/ci.yml) and [native desktop checks](https://github.com/MohamedElashri/marsd/actions/workflows/desktop.yml) retain platform/interpreter evidence, source fingerprints, test reports, license inventories and applicable screenshots/build artifacts. A green runner verifies that environment, not every user-machine configuration. Changes to Actions workflows also require Sanad 1.1+ and `sanad check --base origin/main`; see the [dependency policy](releasing.md).
 
 ## Native builds
 
@@ -88,11 +88,4 @@ Keep user documentation concise and current. Update the usage guide when behavio
 
 ## Release requirements
 
-Desktop distribution remains experimental. Before a supported release:
-
-- Validate macOS 15 and Windows 11 standard-user/quarantined installs, native chooser/confirmation dialogs, offline prerequisites and existing projects. Rehearse Ubuntu 24.04 desktop/Wayland and offline dependencies. Windows Server/X11 CI is narrower evidence.
-- Assign a release maintainer and distribution identity; sign/notarize Mac artifacts and review Windows signing/SmartScreen and Linux package trust.
-- Complete independent scientist-user walkthroughs and distribution-license/native-library review; recheck advisories and package-name availability.
-- Verify applicable native, recovery, install/removal and performance checks on the release revision. Confirm application replacement/uninstall preserves project/source/output files.
-
-No public release or package-registry publication is implied by successful CI. Automatic updates, additional architectures and replay execution require separate design and qualification.
+Follow the [release process](releasing.md) for Actions orchestration, artifact verification, Sanad setup and publication requirements. Desktop distribution remains experimental; green CI does not replace signing, minimum-OS/offline qualification or independent scientist-user review.

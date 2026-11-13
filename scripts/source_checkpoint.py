@@ -35,6 +35,7 @@ def checkpoint():
             ".gitignore",
             ".gitattributes",
             ".python-version",
+            ".sanad.toml",
             "LICENSE",
             "README.md",
             "pyproject.toml",
