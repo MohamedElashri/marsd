@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, type Data } from './api';
+import { Badge, Icon } from './ui';
 
 type Destination = 'Explore' | 'Validate' | 'Runs' | 'Lineage';
 type Navigate = (id: string, destination: Destination) => void;
@@ -17,10 +18,14 @@ export function Runs({
   versionId,
   focus,
   onVersion,
+  onClearFilter,
+  fileName,
 }: {
   versionId?: string;
   focus?: string;
   onVersion: Navigate;
+  onClearFilter: () => void;
+  fileName?: string;
 }) {
   const [runs, setRuns] = useState<Data[]>([]);
   const [selected, setSelected] = useState<Data | null>(null);
@@ -29,7 +34,6 @@ export function Runs({
   const [other, setOther] = useState('');
   const [error, setError] = useState('');
   const [offset, setOffset] = useState(0);
-  const [all, setAll] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const requestSequence = useRef(0);
@@ -48,7 +52,7 @@ export function Runs({
   }
   useEffect(() => {
     setOffset(0);
-  }, [versionId, all]);
+  }, [versionId]);
   useEffect(() => {
     let active = true;
     const sequence = ++requestSequence.current;
@@ -58,7 +62,7 @@ export function Runs({
     setReady(null);
     setComparison(null);
     const query = new URLSearchParams({ offset: String(offset) });
-    if (versionId && !all) query.set('version_id', versionId);
+    if (versionId) query.set('version_id', versionId);
     api<Data[]>(`runs?${query}`)
       .then(async (values) => {
         if (!active) return;
@@ -78,7 +82,7 @@ export function Runs({
     return () => {
       active = false;
     };
-  }, [versionId, all, offset, focus]);
+  }, [versionId, offset, focus]);
 
   async function assess() {
     setReady(null);
@@ -109,13 +113,15 @@ export function Runs({
         saved evidence and never executes a pipeline.
       </p>
       {versionId && (
-        <p>
-          Artifact version <code>{versionId}</code>
-          <label className="checkbox">
-            <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
-            Show all project runs
-          </label>
-        </p>
+        <div className="scope-filter">
+          <Icon name="Files" />
+          <span>
+            Related to <strong>{fileName || versionId.slice(0, 8)}</strong>
+          </span>
+          <button className="text-button" onClick={onClearFilter}>
+            All project runs
+          </button>
+        </div>
       )}
       {error && (
         <p className="error banner" role="alert">
@@ -140,7 +146,7 @@ export function Runs({
               <strong>{run.script.split(/[/\\]/).pop()}</strong>
               <span className={`badge ${run.state.toLowerCase()}`}>{run.state}</span>
               <small>{new Date(run.started_at).toLocaleString()}</small>
-              <small>{run.id}</small>
+              <small className="run-id">{run.id.slice(0, 8)}</small>
             </button>
           ))}
           <div className="run-pagination">
@@ -163,23 +169,30 @@ export function Runs({
         {selected && (
           <article className="run-detail">
             <div className="section-heading">
-              <h2>{selected.state.replaceAll('_', ' ')}</h2>
-              <code>{selected.id}</code>
+              <h2>{selected.code.path.split(/[/\\]/).pop()}</h2>
+              <Badge value={selected.state} />
             </div>
-            <dl className="run-facts">
-              <dt>Selected code</dt>
-              <dd>{selected.code.path}</dd>
-              <dt>Script SHA-256</dt>
-              <dd>
-                <code>{selected.code.sha256}</code>
-              </dd>
-              <dt>Interpreter</dt>
-              <dd>Python {selected.environment.python}</dd>
-              <dt>Process exit</dt>
-              <dd>{selected.exit_code ?? 'No terminal exit evidence'}</dd>
-              <dt>Text capture</dt>
-              <dd>{selected.text_capture}</dd>
-            </dl>
+            <details className="runtime-details">
+              <summary>Code, runtime and identity</summary>
+              <dl className="run-facts">
+                <dt>Selected code</dt>
+                <dd>{selected.code.path}</dd>
+                <dt>Script SHA-256</dt>
+                <dd>
+                  <code>{selected.code.sha256}</code>
+                </dd>
+                <dt>Interpreter</dt>
+                <dd>Python {selected.environment.python}</dd>
+                <dt>Process exit</dt>
+                <dd>{selected.exit_code ?? 'No terminal exit evidence'}</dd>
+                <dt>Text capture</dt>
+                <dd>{selected.text_capture}</dd>
+                <dt>Run ID</dt>
+                <dd>
+                  <code>{selected.id}</code>
+                </dd>
+              </dl>
+            </details>
             {selected.reason && <p className="warning">{selected.reason}</p>}
             <h3>Inputs and outputs</h3>
             <div className="table-scroll">
@@ -394,37 +407,42 @@ export function Lineage({
   versionId,
   onVersion,
   onRun,
+  files,
 }: {
   versionId?: string;
   onVersion: Navigate;
   onRun: (id: string) => void;
+  files: Data[];
 }) {
-  const [seed, setSeed] = useState(versionId || '');
+  const [seed, setSeed] = useState(versionId || files[0]?.version_id || '');
   const [direction, setDirection] = useState('upstream');
   const [depth, setDepth] = useState(1);
   const [inferred, setInferred] = useState(false);
   const [graph, setGraph] = useState<Data | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const querySequence = useRef(0);
   useEffect(() => {
-    setSeed(versionId || '');
-    setGraph(null);
+    if (versionId) void load(versionId);
+    return () => {
+      querySequence.current += 1;
+    };
   }, [versionId]);
   async function load(id = seed) {
+    const sequence = ++querySequence.current;
     setGraph(null);
     setError('');
     setLoading(true);
     setSeed(id);
     try {
-      setGraph(
-        await api(
-          `lineage/${encodeURIComponent(id)}?direction=${direction}&depth=${depth}&include_inferred=${inferred}`,
-        ),
+      const result = await api(
+        `lineage/${encodeURIComponent(id)}?direction=${direction}&depth=${depth}&include_inferred=${inferred}`,
       );
+      if (sequence === querySequence.current) setGraph(result);
     } catch (e) {
-      setError((e as Error).message);
+      if (sequence === querySequence.current) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (sequence === querySequence.current) setLoading(false);
     }
   }
   return (
@@ -445,8 +463,36 @@ export function Lineage({
         }}
       >
         <label>
+          Start with a project file
+          <select
+            value={files.some((file) => file.version_id === seed) ? seed : ''}
+            onChange={(event) => {
+              querySequence.current += 1;
+              setLoading(false);
+              setSeed(event.target.value);
+              setGraph(null);
+            }}
+          >
+            <option value="">Custom entity or run</option>
+            {files.map((file) => (
+              <option key={file.version_id} value={file.version_id}>
+                {file.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           Entity or artifact version ID
-          <input value={seed} onChange={(e) => setSeed(e.target.value)} required />
+          <input
+            value={seed}
+            onChange={(e) => {
+              querySequence.current += 1;
+              setLoading(false);
+              setSeed(e.target.value);
+              setGraph(null);
+            }}
+            required
+          />
         </label>
         <label>
           Direction

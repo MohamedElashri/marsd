@@ -14,9 +14,11 @@ uv run marsd project register ./measurements/sample.h5 --project ./study
 uv run marsd open ./study
 ```
 
-One writer owns a project. Stop the browser server with Ctrl-C, or close the desktop project in Settings, before issuing writing CLI commands. Read-only lists can coexist with the UI. Network shares and actively synchronized cloud folders are unsupported.
+One writer owns a project. Stop the browser server with Ctrl-C, or close the desktop project through Project → Close project, before issuing writing CLI commands. Read-only lists can coexist with the UI. Network shares and actively synchronized cloud folders are unsupported.
 
 ## Explore, compare and validate
+
+The workbench keeps open files in tabs. Opening a supported file loads bounded structure and a preview; select a dataset in the navigator to change scope. Data, Compare and Validate controls act on that recorded file version. Drag pane dividers or use their arrow keys to resize them. Read options expose explicit slices, paths and scan budgets; the inspector shows source identity and units. Saved reports have their own view.
 
 Using the synthetic project from the README:
 

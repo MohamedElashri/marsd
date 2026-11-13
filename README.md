@@ -20,7 +20,7 @@ Marsd is a local scientific data workbench for **HDF5, Parquet and CSV**. Files 
 | **Validate** | Strict YAML contracts and explainable JSON/HTML reports |
 | **Trace** | Trusted Python run recording, readiness checks and evidence-labeled dependencies |
 
-![Marsd Explorer showing a synthetic HDF5 transmission map, its hierarchy and selection metadata](docs/assets/workspace.png)
+![Marsd workbench showing a synthetic HDF5 transmission map, its hierarchy and selection metadata](docs/assets/workspace.png)
 
 *Entirely synthetic data. No account, telemetry or hosted service is required for ordinary use.*
 
