@@ -15,6 +15,7 @@ test('real Explore, Compare, Validate and report workflow', async ({ page }) => 
   });
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
+  await page.screenshot({ path: 'test-results/marsd-unlock.png', fullPage: true });
   await page.getByLabel('Launch code', { exact: true }).fill('automated-test-session');
   const startup = performance.now();
   await page.getByRole('button', { name: 'Open workspace' }).click();
@@ -39,6 +40,21 @@ test('real Explore, Compare, Validate and report workflow', async ({ page }) => 
     );
     if (process.env.MARSD_ENFORCE_BUDGETS === '1') expect(median).toBeLessThanOrEqual(3);
   }
+  await expect(page.getByRole('heading', { name: 'See what’s in your data.' })).toBeVisible();
+  await page.screenshot({ path: 'test-results/marsd-welcome.png', fullPage: true });
+  await page.getByRole('button', { name: 'Browse files', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Find files' })).toBeFocused();
+  await page.getByRole('button', { name: 'Register a file', exact: true }).click();
+  await expect(page.getByLabel('Local path', { exact: true })).toBeFocused();
+  await page.locator('.register-form summary').click();
+  const fileSearch = page.getByRole('searchbox', { name: 'Find files' });
+  await fileSearch.fill('HDF5');
+  await expect(page.locator('.artifact-list .artifact')).toHaveCount(2);
+  await fileSearch.fill('no-such-file');
+  await expect(page.locator('.artifact-list .artifact')).toHaveCount(0);
+  await expect(page.getByText('No matching files. Try a name or format.')).toBeVisible();
+  await fileSearch.fill('');
+  await expect(page.locator('.artifact-list .artifact')).toHaveCount(expectedArtifacts);
   await page.getByRole('button', { name: /run_042\.h5/ }).click();
   await expect(page.getByText('Structure loaded. Choose what to read.')).toBeVisible();
   await expect(page.getByLabel('Dataset path', { exact: true })).toHaveValue(
@@ -47,6 +63,46 @@ test('real Explore, Compare, Validate and report workflow', async ({ page }) => 
   await page.getByRole('button', { name: 'Preview selection', exact: true }).click();
   await expect(page.getByRole('img', { name: /Heatmap/ })).toBeVisible();
   await expect(page.getByText('Requested scope complete')).toBeVisible();
+  const heatmapCell = await page.locator('.heatmap-cells rect').first().boundingBox();
+  expect(heatmapCell).not.toBeNull();
+  expect(heatmapCell!.width).toBeCloseTo(heatmapCell!.height, 1);
+  // Deliver the previous dataset's completed preview after the user changes datasets.
+  let releasePreview!: () => void;
+  let previewCompleted!: () => void;
+  const previewGate = new Promise<void>((resolve) => {
+    releasePreview = resolve;
+  });
+  const completedPreview = new Promise<void>((resolve) => {
+    previewCompleted = resolve;
+  });
+  await page.route('**/api/jobs/*', async (route) => {
+    const response = await route.fetch();
+    const job = await response.json();
+    if (job.state === 'SUCCEEDED' && job.result?.kind === 'preview') {
+      previewCompleted();
+      await previewGate;
+    }
+    await route.fulfill({ response });
+  });
+  await page.getByRole('button', { name: 'Preview selection', exact: true }).click();
+  await completedPreview;
+  await page
+    .locator('.hierarchy')
+    .getByRole('button', { name: /wavelength/ })
+    .click();
+  releasePreview();
+  await expect(page.getByRole('status').filter({ hasText: 'previous selection' })).toBeVisible();
+  await page.unroute('**/api/jobs/*');
+  await expect(page.getByRole('img', { name: /Heatmap/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Preview selection', exact: true }).click();
+  await expect(page.getByRole('img', { name: /Line plot/ })).toBeVisible();
+  await page
+    .locator('.hierarchy')
+    .getByRole('button', { name: /transmission/ })
+    .click();
+  await expect(page.getByRole('img', { name: /Line plot/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Preview selection', exact: true }).click();
+  await expect(page.getByRole('img', { name: /Heatmap/ })).toBeVisible();
   await page.screenshot({ path: 'test-results/marsd-explorer.png', fullPage: true });
   await page.getByRole('button', { name: 'Compare', exact: true }).click();
   await page
@@ -55,6 +111,7 @@ test('real Explore, Compare, Validate and report workflow', async ({ page }) => 
   await page.getByLabel('Selection', { exact: true }).fill(':,:');
   await page.getByRole('button', { name: 'Compare A with B' }).click();
   await expect(page.locator('.badge.different')).toBeVisible();
+  await page.screenshot({ path: 'test-results/marsd-compare.png', fullPage: true });
   await expect(page.getByText('1', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: /run_042\.parquet/ }).click();
   await expect(page.getByRole('status').filter({ hasText: 'inspect · succeeded' })).toBeVisible();
@@ -65,6 +122,7 @@ test('real Explore, Compare, Validate and report workflow', async ({ page }) => 
   await expect(
     page.locator('tr').filter({ hasText: 'transmission_unit' }).locator('.badge'),
   ).toHaveText('FAIL');
+  await page.screenshot({ path: 'test-results/marsd-validation.png', fullPage: true });
   await page.getByRole('button', { name: 'Reports', exact: true }).click();
   await expect(page.locator('.report-row')).toHaveCount(2);
   await page.getByRole('button', { name: 'Export HTML', exact: true }).click();
@@ -117,6 +175,7 @@ test('real Explore, Compare, Validate and report workflow', async ({ page }) => 
     }),
   );
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
+  await page.locator('.local-contract summary').click();
   await page
     .getByLabel('Or approved local contract path', { exact: true })
     .fill(path.join(project.path, 'contracts', 'identifiers.yaml'));
@@ -149,6 +208,11 @@ test('real Explore, Compare, Validate and report workflow', async ({ page }) => 
     `Version ${inputVersion.slice(0, 8)}`,
   );
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('complementary', { name: 'Source files' })).toBeHidden();
+  await page.getByRole('button', { name: /Browse files/ }).click();
+  await expect(page.getByRole('searchbox', { name: 'Find files' })).toBeVisible();
+  await page.getByRole('button', { name: /Hide files/ }).click();
+  await expect(page.getByRole('complementary', { name: 'Source files' })).toBeHidden();
   await page.getByRole('button', { name: 'Runs', exact: true }).click();
   await expect(page.locator('.run-detail h2')).toHaveText('FAILED');
   await page.screenshot({ path: 'test-results/marsd-runs-mobile.png', fullPage: true });

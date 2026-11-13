@@ -28,6 +28,35 @@ function Mark() {
     </svg>
   );
 }
+function ViewIcon({ name }: { name: Tab | 'Files' | 'Search' }) {
+  const paths: Record<string, string> = {
+    Explore: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
+    Compare: 'M8 3v18 M16 3v18 M3 8l5-5 5 5 M11 16l5 5 5-5',
+    Validate: 'M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M8 12l3 3 5-6',
+    Runs: 'M8 5l12 7-12 7z',
+    Lineage: 'M4 4h5v5H4z M15 15h5v5h-5z M6.5 9v8.5H15 M9 6.5h8.5V15',
+    Reports: 'M5 3h10l4 4v14H5z M14 3v5h5 M8 12h8 M8 16h6',
+    Settings: 'M4 6h16 M4 12h16 M4 18h16 M8 3v6 M16 9v6 M10 15v6',
+    Help: 'M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3 M12 17v.1 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20',
+    Files: 'M3 7V4h7l2 3h9v13H3z',
+    Search: 'M10.5 3a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15 M16 16l5 5',
+  };
+  return (
+    <svg
+      className="view-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}
+
 function Badge({ value }: { value: string }) {
   return <span className={`badge ${value.toLowerCase()}`}>{value}</span>;
 }
@@ -54,11 +83,14 @@ function Plot({ result }: { result: Data }) {
     high = Math.max(...finite),
     range = high - low || 1;
   const width = 680,
-    height = 310,
-    left = 58,
-    top = 20,
-    areaW = 590,
-    areaH = 245;
+    height = matrix ? 390 : 310,
+    top = 20;
+  const cell = matrix ? Math.min(485 / raw[0].length, 320 / raw.length) : 0;
+  const areaW = matrix ? cell * raw[0].length : 590;
+  const areaH = matrix ? cell * raw.length : 245;
+  const left = matrix ? (width - areaW - 100) / 2 : 58;
+  const color = (value: number) =>
+    `hsl(${202 - ((value - low) / range) * 34} 48% ${89 - ((value - low) / range) * 63}%)`;
   return (
     <div className="plot-wrap">
       <svg
@@ -72,24 +104,51 @@ function Plot({ result }: { result: Data }) {
       >
         <rect x={left} y={top} width={areaW} height={areaH} fill="#edf3f7" />
         {matrix ? (
-          raw.map((row: unknown[], y: number) =>
-            row.map((v, x) => (
-              <rect
-                key={`${x}-${y}`}
-                x={left + (x * areaW) / row.length}
-                y={top + (y * areaH) / raw.length}
-                width={areaW / row.length + 0.2}
-                height={areaH / raw.length + 0.2}
-                fill={
-                  typeof v === 'number' && Number.isFinite(v)
-                    ? `hsl(${202 - ((v - low) / range) * 34} 48% ${89 - ((v - low) / range) * 63}%)`
-                    : '#c1c9ce'
-                }
-              >
-                <title>{`[${y}, ${x}]: ${display(v)}`}</title>
-              </rect>
-            )),
-          )
+          <>
+            <g className="heatmap-cells">
+              {raw.map((row: unknown[], y: number) =>
+                row.map((v, x) => (
+                  <rect
+                    key={`${x}-${y}`}
+                    x={left + x * cell}
+                    y={top + y * cell}
+                    width={cell + 0.2}
+                    height={cell + 0.2}
+                    fill={typeof v === 'number' && Number.isFinite(v) ? color(v) : '#c1c9ce'}
+                  >
+                    <title>{`[${y}, ${x}]: ${display(v)}`}</title>
+                  </rect>
+                )),
+              )}
+            </g>
+            <defs>
+              <linearGradient id="array-color-scale" x1="0" y1="1" x2="0" y2="0">
+                {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+                  <stop key={t} offset={t} stopColor={color(low + t * (high - low))} />
+                ))}
+              </linearGradient>
+            </defs>
+            <rect
+              x={left + areaW + 24}
+              y={top}
+              width={12}
+              height={areaH}
+              fill="url(#array-color-scale)"
+              rx="2"
+            />
+            <text x={left + areaW + 43} y={top + 9}>
+              {high.toPrecision(3)}
+            </text>
+            <text x={left + areaW + 43} y={top + areaH}>
+              {low.toPrecision(3)}
+            </text>
+            <text x={left - 12} y={top + 10} textAnchor="end">
+              Row 0
+            </text>
+            <text x={left - 12} y={top + areaH} textAnchor="end">
+              {raw.length - 1}
+            </text>
+          </>
         ) : (
           <>
             {[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -121,23 +180,19 @@ function Plot({ result }: { result: Data }) {
           </>
         )}
         <line x1={left} x2={left + areaW} y1={top + areaH} y2={top + areaH} stroke="#8296a6" />
-        <text x={left} y={height - 20}>
-          Selection index 0
+        <text x={left} y={top + areaH + 24}>
+          {matrix ? 'Selection column 0' : 'Selection index 0'}
         </text>
-        <text x={left + areaW} y={height - 20} textAnchor="end">
+        <text x={left + areaW} y={top + areaH + 24} textAnchor="end">
           {matrix ? raw[0]?.length - 1 : raw.length - 1}
         </text>
-        {matrix && (
-          <text x={12} y={top + 12}>
-            Row 0
-          </text>
-        )}
       </svg>
       <div className="plot-caption">
         <span>{result.array?.path}</span>
         <span>
           {result.array?.unit || 'Unit unspecified'} · finite range {low.toPrecision(4)} to{' '}
           {high.toPrecision(4)}
+          {matrix && ' · equal-sized index cells'}
         </span>
       </div>
     </div>
@@ -334,12 +389,26 @@ function App() {
   const [tab, setTab] = useState<Tab>('Explore');
   const [metadata, setMetadata] = useState<Data | null>(null);
   const [node, setNode] = useState('/');
+  const selectionEpoch = useRef(0);
   const [selection, setSelection] = useState('');
   const [columns, setColumns] = useState('');
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<Data | null>(null);
   const [activeJob, setActiveJob] = useState<Data | null>(null);
   const [registerPath, setRegisterPath] = useState('');
+  const [fileQuery, setFileQuery] = useState('');
+  const [filesOpen, setFilesOpen] = useState(true);
+  const registerDetails = useRef<HTMLDetailsElement>(null);
+  const registerInput = useRef<HTMLInputElement>(null);
+  const fileSearchInput = useRef<HTMLInputElement>(null);
+  const visibleArtifacts = artifacts.filter((artifact) =>
+    `${artifact.name} ${artifact.format}`.toLowerCase().includes(fileQuery.toLowerCase().trim()),
+  );
+  function showRegistration() {
+    setFilesOpen(true);
+    if (registerDetails.current) registerDetails.current.open = true;
+    requestAnimationFrame(() => registerInput.current?.focus());
+  }
   const [other, setOther] = useState('');
   const [keys, setKeys] = useState('');
   const [position, setPosition] = useState(false);
@@ -353,6 +422,7 @@ function App() {
   const busy = Boolean(activeJob && !finished.has(activeJob.state));
   const isArray = selected?.format === 'HDF5';
   const currentNode = metadata?.nodes?.find((n: Data) => n.path === node);
+  const selectedContract = contracts.find((item) => item.path === contract);
 
   async function refresh() {
     const [p, a, c, r, j] = await Promise.all([
@@ -388,7 +458,8 @@ function App() {
             const value = job.result;
             if (
               value?.inputs?.[0]?.path === selectedRef.current &&
-              value?.inputs?.[0]?.version_id === selectedVersionRef.current
+              value?.inputs?.[0]?.version_id === selectedVersionRef.current &&
+              (value.kind === 'inspect' || activeJob.selectionEpoch === selectionEpoch.current)
             ) {
               if (value.kind === 'inspect') {
                 setMetadata(value);
@@ -401,8 +472,8 @@ function App() {
             } else
               setNotice(
                 value?.report_id
-                  ? 'Job completed for another artifact. Its saved report is available in Reports.'
-                  : 'A preview completed for a previous selection. Select that artifact and rerun to view it.',
+                  ? 'Job completed for a previous selection. Its saved report is available in Reports.'
+                  : 'The operation completed for a previous selection. Preview the current selection to view its data.',
               );
             await refresh();
           } else if (job.state !== 'CANCELLED')
@@ -413,7 +484,7 @@ function App() {
           pendingInspection.current = null;
           if (next && next.version_id === selectedVersionRef.current)
             void run('inspect', { node: '/', selection: '', columns: [], offset: 0 }, next);
-        } else setActiveJob(job);
+        } else setActiveJob({ ...job, selectionEpoch: activeJob.selectionEpoch });
       } catch (e) {
         if (!stopped) setError((e as Error).message);
       }
@@ -451,14 +522,17 @@ function App() {
         max_rows: maxRows,
         ...overrides,
       };
+      const epoch = selectionEpoch.current;
       const job = await api('jobs', request);
-      setActiveJob({ id: job.id, state: 'QUEUED', operation });
+      setActiveJob({ id: job.id, state: 'QUEUED', operation, selectionEpoch: epoch });
     } catch (e) {
       setError((e as Error).message);
     }
   }
   function choose(artifact: Data, inspectSource = true) {
     pendingInspection.current = null;
+    selectionEpoch.current += 1;
+    setFilesOpen(false);
     setSelected(artifact);
     selectedRef.current = artifact.current_path || artifact.path;
     selectedVersionRef.current = artifact.version_id;
@@ -470,6 +544,7 @@ function App() {
     setSelection('');
     setOffset(0);
     setColumns('');
+    setOther('');
     setError('');
     if (artifact.stale)
       setError(
@@ -572,6 +647,9 @@ function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#workspace-content">
+        Skip to workspace
+      </a>
       <header className="topbar">
         <div className="brand">
           <Mark />
@@ -581,7 +659,10 @@ function App() {
         </div>
         <div className="project-name">
           <span className="project-dot" />
-          {project?.name || 'Opening project…'}
+          <span>
+            <small>Project</small>
+            <strong>{project?.name || 'Opening project…'}</strong>
+          </span>
         </div>
         <div className="local-status">
           <span />
@@ -589,9 +670,52 @@ function App() {
         </div>
       </header>
       <div className="workspace">
-        <aside className="sidebar">
+        <div className="navigation-rail">
+          <p className="nav-heading">Workspace</p>
+          <nav className="tabs" aria-label="Workspace views">
+            {tabs.map((t) => (
+              <button
+                key={t}
+                className={tab === t ? 'active' : ''}
+                aria-pressed={tab === t}
+                onClick={() => {
+                  setTab(t);
+                  setError('');
+                }}
+              >
+                <ViewIcon name={t} />
+                <span>{t}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="nav-footnote">
+            Local files.
+            <br />
+            Clear evidence.
+          </div>
+        </div>
+        <div className="mobile-files-bar">
+          <button
+            className="secondary"
+            aria-expanded={filesOpen}
+            aria-controls="source-browser"
+            onClick={() => setFilesOpen(!filesOpen)}
+          >
+            <ViewIcon name="Files" />
+            {filesOpen ? 'Hide files' : 'Browse files'}
+            <span>{artifacts.length}</span>
+          </button>
+          {selected && <span>{selected.name}</span>}
+        </div>
+        <aside
+          id="source-browser"
+          className={`sidebar ${filesOpen ? 'files-open' : ''}`}
+          aria-label="Source files"
+        >
           <div className="sidebar-heading">
-            <h2>Artifacts</h2>
+            <h2>
+              Files <span className="file-count">{artifacts.length}</span>
+            </h2>
             <button
               className="icon-button"
               aria-label="Refresh artifacts"
@@ -601,13 +725,29 @@ function App() {
               ↻
             </button>
           </div>
-          <p className="sidebar-note">Registered by reference</p>
+          <p className="sidebar-note">References to your source data</p>
+          <label className="file-search">
+            <ViewIcon name="Search" />
+            <input
+              type="search"
+              ref={fileSearchInput}
+              aria-label="Find files"
+              placeholder="Find a file…"
+              value={fileQuery}
+              onChange={(event) => setFileQuery(event.target.value)}
+            />
+          </label>
           <div className="artifact-list">
-            {artifacts.map((a) => (
+            {visibleArtifacts.map((a) => (
               <button
                 key={a.id}
                 className={`artifact ${selected?.id === a.id ? 'selected' : ''}`}
-                onClick={() => choose(a)}
+                aria-pressed={selected?.id === a.id}
+                title={a.path}
+                onClick={() => {
+                  choose(a);
+                  if (['Reports', 'Settings', 'Help'].includes(tab)) setTab('Explore');
+                }}
               >
                 <span className="file-type">
                   {a.format === 'Parquet' ? 'PQ' : a.format === 'HDF5' ? 'H5' : 'CSV'}
@@ -620,7 +760,14 @@ function App() {
               </button>
             ))}
           </div>
-          <details className="register-form">
+          {!visibleArtifacts.length && (
+            <p className="file-empty">
+              {fileQuery
+                ? 'No matching files. Try a name or format.'
+                : 'No files yet. Register a local file to begin.'}
+            </p>
+          )}
+          <details className="register-form" ref={registerDetails}>
             <summary>Register a file</summary>
             <form
               onSubmit={async (e) => {
@@ -653,6 +800,7 @@ function App() {
               <label>
                 Local path
                 <input
+                  ref={registerInput}
                   value={registerPath}
                   onChange={(e) => setRegisterPath(e.target.value)}
                   required
@@ -665,16 +813,23 @@ function App() {
             </form>
           </details>
           {metadata?.nodes && (
-            <div className="hierarchy">
-              <h3>Inside this file</h3>
+            <details className="hierarchy" open key={selected?.version_id}>
+              <summary>Inside this file</summary>
               {metadata.nodes.map((n: Data) => (
                 <button
                   key={n.path}
                   className={`node ${node === n.path ? 'selected' : ''}`}
+                  aria-pressed={node === n.path}
+                  style={{
+                    paddingLeft:
+                      10 + Math.max(0, n.path.split('/').filter(Boolean).length - 1) * 12,
+                  }}
                   title={n.limitation || n.path}
                   onClick={() => {
+                    selectionEpoch.current += 1;
                     setNode(n.path);
                     setSelection('');
+                    setResult(null);
                   }}
                 >
                   <span>{n.kind === 'group' ? '▾' : n.kind === 'link' ? '↗' : '▦'}</span>
@@ -687,7 +842,7 @@ function App() {
                   </span>
                 </button>
               ))}
-            </div>
+            </details>
           )}
           <div className="sidebar-footer">
             <span className="read-only-symbol">◈</span>
@@ -696,21 +851,7 @@ function App() {
             </span>
           </div>
         </aside>
-        <main className="main-workspace">
-          <nav className="tabs" aria-label="Workspace views">
-            {tabs.map((t) => (
-              <button
-                key={t}
-                className={tab === t ? 'active' : ''}
-                onClick={() => {
-                  setTab(t);
-                  setError('');
-                }}
-              >
-                {t}
-              </button>
-            ))}
-          </nav>
+        <main className="main-workspace" id="workspace-content" tabIndex={-1}>
           {error && (
             <div className="error banner" role="alert">
               <span>{error}</span>
@@ -774,7 +915,10 @@ function App() {
                     )?.slice(0, 8)}
                   </span>
                   <small>
-                    {selected.identity_strength || 'stat_weak'} · best-effort consistency
+                    {selected.identity_strength === 'sha256'
+                      ? 'SHA-256 identity'
+                      : 'Size & timestamp identity'}{' '}
+                    · best effort
                   </small>
                   {selected.stale && <Badge value="STALE" />}
                 </div>
@@ -790,11 +934,43 @@ function App() {
                   <span />
                   <span />
                 </div>
-                <h1>Start with a source file.</h1>
+                <h1>See what’s in your data.</h1>
                 <p>
-                  Select an artifact on the left to inspect its structure, compare a version or
-                  validate a handoff.
+                  Choose a file to explore its structure, compare measurements or check a data
+                  contract.
                 </p>
+                <div className="empty-actions">
+                  {artifacts.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setFilesOpen(true);
+                        requestAnimationFrame(() => fileSearchInput.current?.focus());
+                      }}
+                    >
+                      Browse files
+                    </button>
+                  )}
+                  <button className="secondary" onClick={showRegistration}>
+                    Register a file
+                  </button>
+                </div>
+                <div className="workflow-guide">
+                  <div>
+                    <ViewIcon name="Explore" />
+                    <h2>Inspect a selection</h2>
+                    <p>Browse structure, preview values and see coverage.</p>
+                  </div>
+                  <div>
+                    <ViewIcon name="Compare" />
+                    <h2>Compare measurements</h2>
+                    <p>Choose alignment and tolerances explicitly.</p>
+                  </div>
+                  <div>
+                    <ViewIcon name="Validate" />
+                    <h2>Check a contract</h2>
+                    <p>Find violations with evidence for each rule.</p>
+                  </div>
+                </div>
                 <p className="muted">
                   Registration keeps a reference to the original. Your data stays where it is.
                 </p>
@@ -820,12 +996,18 @@ function App() {
                           Dataset path
                           <input
                             value={node}
-                            onChange={(e) => setNode(e.target.value)}
+                            onChange={(e) => {
+                              selectionEpoch.current += 1;
+                              setNode(e.target.value);
+                              setResult(null);
+                            }}
                             placeholder="/group/dataset"
                           />
                         </label>
                         <label>
-                          Selection <span className="muted">indices or start:stop:step</span>
+                          <span>
+                            Selection <span className="muted">start:stop:step</span>
+                          </span>
                           <input
                             value={selection}
                             onChange={(e) => setSelection(e.target.value)}
@@ -836,7 +1018,9 @@ function App() {
                     ) : (
                       <div className="selection-form">
                         <label>
-                          Columns <span className="muted">comma separated; empty means all</span>
+                          <span>
+                            Columns <span className="muted">comma separated</span>
+                          </span>
                           <input
                             value={columns}
                             onChange={(e) => setColumns(e.target.value)}
@@ -956,10 +1140,15 @@ function App() {
                     <select value={other} onChange={(e) => setOther(e.target.value)}>
                       <option value="">Choose a registered artifact</option>
                       {artifacts
-                        .filter((a) => a.path !== selected.path)
+                        .filter(
+                          (a) =>
+                            a.path !== selected.path &&
+                            (isArray ? a.format === 'HDF5' : a.format !== 'HDF5'),
+                        )
                         .map((a) => (
-                          <option value={a.path} key={a.id}>
+                          <option value={a.path} key={a.id} disabled={a.stale}>
                             {a.name}
+                            {a.stale ? ' (unavailable)' : ''}
                           </option>
                         ))}
                     </select>
@@ -968,7 +1157,14 @@ function App() {
                     <>
                       <label>
                         Dataset path
-                        <input value={node} onChange={(e) => setNode(e.target.value)} />
+                        <input
+                          value={node}
+                          onChange={(e) => {
+                            selectionEpoch.current += 1;
+                            setNode(e.target.value);
+                            setResult(null);
+                          }}
+                        />
                       </label>
                       <label>
                         Selection
@@ -1010,42 +1206,56 @@ function App() {
                       />
                     </label>
                   )}
-                  <label>
-                    Absolute tolerance
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={atol}
-                      onChange={(e) => setAtol(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Relative tolerance
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={rtol}
-                      onChange={(e) => setRtol(e.target.value)}
-                    />
-                  </label>
-                  <label className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={convertUnits}
-                      onChange={(e) => setConvertUnits(e.target.checked)}
-                    />
-                    Allow explicit compatible-unit conversion
-                  </label>
-                  <label className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={nanEqual}
-                      onChange={(e) => setNanEqual(e.target.checked)}
-                    />
-                    Treat paired NaNs as equal (reported separately)
-                  </label>
+                  <details className="advanced-options">
+                    <summary>
+                      Tolerances and units{' '}
+                      <span>
+                        {Number(atol) === 0 && Number(rtol) === 0
+                          ? 'Exact numeric comparison'
+                          : `Absolute ${atol} / relative ${rtol}`}
+                        {convertUnits ? ' · unit conversion on' : ''}
+                        {nanEqual ? ' · paired NaNs equal' : ''}
+                      </span>
+                    </summary>
+                    <div className="advanced-grid">
+                      <label>
+                        Absolute tolerance
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={atol}
+                          onChange={(e) => setAtol(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Relative tolerance
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={rtol}
+                          onChange={(e) => setRtol(e.target.value)}
+                        />
+                      </label>
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={convertUnits}
+                          onChange={(e) => setConvertUnits(e.target.checked)}
+                        />
+                        Allow explicit compatible-unit conversion
+                      </label>
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={nanEqual}
+                          onChange={(e) => setNanEqual(e.target.checked)}
+                        />
+                        Treat paired NaNs as equal (reported separately)
+                      </label>
+                    </div>
+                  </details>
                 </div>
                 <p className="muted">
                   Arrays align by matching path and shape. Tables require unique keys or an explicit
@@ -1074,7 +1284,6 @@ function App() {
               <section>
                 <div className="section-heading">
                   <h2>Check a data contract</h2>
-                  <span className="muted">Native schema v1</span>
                 </div>
                 <div className="form-grid">
                   <label>
@@ -1093,14 +1302,6 @@ function App() {
                     </select>
                   </label>
                   <label>
-                    Or approved local contract path
-                    <input
-                      value={contract}
-                      onChange={(e) => setContract(e.target.value)}
-                      placeholder="Path inside approved roots"
-                    />
-                  </label>
-                  <label>
                     Scan row/cell budget
                     <input
                       type="number"
@@ -1111,17 +1312,29 @@ function App() {
                     />
                   </label>
                 </div>
-                {contracts.find((c) => c.path === contract)?.rules && (
-                  <div className="rule-summary">
-                    {contracts
-                      .find((c) => c.path === contract)
-                      ?.rules.map((r: Data) => (
-                        <span key={r.id}>
-                          {r.kind}
-                          <small>{r.field}</small>
+                <details className="local-contract">
+                  <summary>Use a local contract file</summary>
+                  <label>
+                    Or approved local contract path
+                    <input
+                      value={contract}
+                      onChange={(e) => setContract(e.target.value)}
+                      placeholder="Path inside approved roots"
+                    />
+                  </label>
+                </details>
+                {selectedContract?.rules && (
+                  <details className="contract-rules">
+                    <summary>Rules in this contract ({selectedContract.rules.length})</summary>
+                    <div className="rule-summary">
+                      {selectedContract.rules.map((rule: Data) => (
+                        <span key={rule.id}>
+                          {rule.kind}
+                          <small>{rule.field}</small>
                         </span>
                       ))}
-                  </div>
+                    </div>
+                  </details>
                 )}
                 <p className="muted">
                   A successful sample cannot establish a whole-file PASS. Missing reference evidence
