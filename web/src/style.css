@@ -306,6 +306,7 @@ kbd {
   overflow: hidden;
 }
 .workbench {
+  position: relative;
   height: 100%;
   display: grid;
   grid-template-columns: var(--navigator-width) 5px minmax(0, 1fr) 5px var(--inspector-width);
@@ -367,6 +368,20 @@ kbd {
 .panel-heading .icon-button {
   width: 24px;
   height: 24px;
+}
+.unapplied-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 7px 10px;
+  border: 1px solid #dbc99b;
+  background: #fffaf0;
+  color: #695323;
+  font-size: 11px;
+}
+.unapplied-options > span {
+  font-weight: 600;
 }
 .navigator-filter {
   display: flex;
@@ -1871,8 +1886,8 @@ tbody tr:hover {
     position: absolute;
     z-index: 5;
     right: 0;
-    top: 44px;
-    bottom: 25px;
+    top: 33px;
+    bottom: 0;
     width: var(--inspector-width);
     box-shadow: -5px 0 20px #22374a20;
     border-left: 1px solid var(--line);

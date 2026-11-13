@@ -35,6 +35,8 @@ export function Runs({
   const [error, setError] = useState('');
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [assessing, setAssessing] = useState(false);
+  const [comparing, setComparing] = useState(false);
 
   const requestSequence = useRef(0);
   async function open(id: string) {
@@ -42,12 +44,15 @@ export function Runs({
     setSelected(null);
     setReady(null);
     setComparison(null);
+    setOther('');
+    setAssessing(false);
+    setComparing(false);
     setError('');
     try {
       const detail = await api(`runs/${encodeURIComponent(id)}`);
       if (sequence === requestSequence.current) setSelected(detail);
     } catch (e) {
-      setError((e as Error).message);
+      if (sequence === requestSequence.current) setError((e as Error).message);
     }
   }
   useEffect(() => {
@@ -61,6 +66,9 @@ export function Runs({
     setSelected(null);
     setReady(null);
     setComparison(null);
+    setOther('');
+    setAssessing(false);
+    setComparing(false);
     const query = new URLSearchParams({ offset: String(offset) });
     if (versionId) query.set('version_id', versionId);
     api<Data[]>(`runs?${query}`)
@@ -74,32 +82,46 @@ export function Runs({
         }
       })
       .catch((e) => {
-        if (active) setError(e.message);
+        if (active && sequence === requestSequence.current) setError(e.message);
       })
       .finally(() => {
         if (active) setLoading(false);
       });
     return () => {
       active = false;
+      requestSequence.current += 1;
     };
   }, [versionId, offset, focus]);
 
   async function assess() {
+    if (!selected || assessing) return;
+    const sequence = requestSequence.current;
+    setAssessing(true);
     setReady(null);
     setError('');
     try {
-      setReady(await api(`runs/${selected!.id}/readiness`));
+      const result = await api(`runs/${encodeURIComponent(selected.id)}/readiness`);
+      if (sequence === requestSequence.current) setReady(result);
     } catch (e) {
-      setError((e as Error).message);
+      if (sequence === requestSequence.current) setError((e as Error).message);
+    } finally {
+      if (sequence === requestSequence.current) setAssessing(false);
     }
   }
   async function compare() {
+    if (!selected || !other || other === selected.id || comparing) return;
+    const sequence = requestSequence.current;
+    setComparing(true);
     setComparison(null);
     setError('');
     try {
-      setComparison(await api(`runs/compare?a=${selected!.id}&b=${other}`));
+      const query = new URLSearchParams({ a: selected.id, b: other });
+      const result = await api(`runs/compare?${query}`);
+      if (sequence === requestSequence.current) setComparison(result);
     } catch (e) {
-      setError((e as Error).message);
+      if (sequence === requestSequence.current) setError((e as Error).message);
+    } finally {
+      if (sequence === requestSequence.current) setComparing(false);
     }
   }
   return (
@@ -259,10 +281,19 @@ export function Runs({
               </table>
             </div>
             <div className="run-tools">
-              <button onClick={assess}>Assess readiness (dry-run)</button>
+              <button onClick={assess} disabled={assessing} aria-busy={assessing}>
+                Assess readiness (dry-run)
+              </button>
               <label>
                 Reference run
-                <select value={other} onChange={(e) => setOther(e.target.value)}>
+                <select
+                  value={other}
+                  disabled={comparing}
+                  onChange={(e) => {
+                    setOther(e.target.value);
+                    setComparison(null);
+                  }}
+                >
                   <option value="">Choose another run</option>
                   {runs
                     .filter((run) => run.id !== selected.id)
@@ -273,10 +304,17 @@ export function Runs({
                     ))}
                 </select>
               </label>
-              <button className="secondary" disabled={!other} onClick={compare}>
+              <button
+                className="secondary"
+                disabled={!other || other === selected.id || comparing}
+                aria-busy={comparing}
+                onClick={compare}
+              >
                 Compare recorded evidence
               </button>
             </div>
+            {assessing && <p role="status">Assessing recorded readiness…</p>}
+            {comparing && <p role="status">Comparing recorded evidence…</p>}
             {ready && (
               <div className="readiness">
                 <h3>{ready.status}</h3>
@@ -422,6 +460,12 @@ export function Lineage({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const querySequence = useRef(0);
+  function invalidate() {
+    querySequence.current += 1;
+    setLoading(false);
+    setGraph(null);
+    setError('');
+  }
   useEffect(() => {
     if (versionId) void load(versionId);
     return () => {
@@ -467,10 +511,8 @@ export function Lineage({
           <select
             value={files.some((file) => file.version_id === seed) ? seed : ''}
             onChange={(event) => {
-              querySequence.current += 1;
-              setLoading(false);
+              invalidate();
               setSeed(event.target.value);
-              setGraph(null);
             }}
           >
             <option value="">Custom entity or run</option>
@@ -486,17 +528,21 @@ export function Lineage({
           <input
             value={seed}
             onChange={(e) => {
-              querySequence.current += 1;
-              setLoading(false);
+              invalidate();
               setSeed(e.target.value);
-              setGraph(null);
             }}
             required
           />
         </label>
         <label>
           Direction
-          <select value={direction} onChange={(e) => setDirection(e.target.value)}>
+          <select
+            value={direction}
+            onChange={(e) => {
+              invalidate();
+              setDirection(e.target.value);
+            }}
+          >
             <option value="upstream">Upstream prerequisites</option>
             <option value="downstream">Downstream impact</option>
           </select>
@@ -508,14 +554,20 @@ export function Lineage({
             min="0"
             max="20"
             value={depth}
-            onChange={(e) => setDepth(Number(e.target.value))}
+            onChange={(e) => {
+              invalidate();
+              setDepth(Number(e.target.value));
+            }}
           />
         </label>
         <label className="checkbox">
           <input
             type="checkbox"
             checked={inferred}
-            onChange={(e) => setInferred(e.target.checked)}
+            onChange={(e) => {
+              invalidate();
+              setInferred(e.target.checked);
+            }}
           />
           Include labeled inferences
         </label>
@@ -527,6 +579,9 @@ export function Lineage({
         </p>
       )}
       {loading && <p role="status">Loading bounded dependencies…</p>}
+      {!loading && !graph && !error && (
+        <p className="empty-inline">Choose a scope, then load its documented dependencies.</p>
+      )}
       {graph && (
         <>
           <p>

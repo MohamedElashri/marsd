@@ -161,6 +161,16 @@ test('dense workbench preserves scientific context across files and evidence vie
   await page.getByRole('button', { name: 'Run comparison', exact: true }).click();
   await expect(page.locator('.results .badge.different')).toBeVisible();
   await page.screenshot({ path: 'test-results/marsd-compare.png', fullPage: true, scale: 'css' });
+  await page.getByLabel('Absolute tolerance', { exact: true }).fill('1');
+  await expect(page.getByText('Options changed', { exact: true })).toBeVisible();
+  await page.getByLabel('Absolute tolerance', { exact: true }).fill('0');
+  await expect(page.getByText('Options changed', { exact: true })).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Reference B', exact: true }).selectOption('');
+  await expect(page.getByText('Options changed', { exact: true })).toBeVisible();
+  await page
+    .getByRole('combobox', { name: 'Reference B', exact: true })
+    .selectOption({ label: 'run_041.h5' });
+  await expect(page.getByText('Options changed', { exact: true })).toHaveCount(0);
   await files.getByRole('button', { name: /run_042\.parquet/ }).click();
   await expect(page.locator('.results tbody tr')).toHaveCount(8);
   await page.getByRole('button', { name: 'Compare', exact: true }).click();
@@ -179,6 +189,10 @@ test('dense workbench preserves scientific context across files and evidence vie
   await page.getByRole('button', { name: 'Validate', exact: true }).click();
   await page.getByRole('button', { name: 'Run validation', exact: true }).click();
   await expect(page.locator('.results .badge.fail').first()).toBeVisible();
+  await page.getByLabel('Row/cell budget', { exact: true }).fill('1');
+  await expect(page.getByText('Options changed', { exact: true })).toBeVisible();
+  await page.getByLabel('Row/cell budget', { exact: true }).fill('100000');
+  await expect(page.getByText('Options changed', { exact: true })).toHaveCount(0);
   await expect(
     page.locator('tr').filter({ hasText: 'transmission_unit' }).locator('.badge'),
   ).toHaveText('FAIL');

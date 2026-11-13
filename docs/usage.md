@@ -18,7 +18,7 @@ One writer owns a project. Stop the browser server with Ctrl-C, or close the des
 
 ## Explore, compare and validate
 
-The workbench keeps open files in tabs. Opening a supported file loads bounded structure and a preview; select a dataset in the navigator to change scope. Data, Compare and Validate controls act on that recorded file version. Drag pane dividers or use their arrow keys to resize them. Read options expose explicit slices, paths and scan budgets; the inspector shows source identity and units. Saved reports have their own view.
+The workbench keeps open files in tabs. Opening a supported file loads bounded structure and a preview; select a dataset in the navigator to change scope. Data, Compare and Validate controls act on that recorded file version. Drag pane dividers or use their arrow keys to resize them. Narrow windows show one overlay pane at a time; Escape closes it. Results flag edited options until you apply them again. Read options expose explicit slices, paths and scan budgets; the inspector shows source identity and units. Saved reports have their own view.
 
 Using the synthetic project from the README:
 

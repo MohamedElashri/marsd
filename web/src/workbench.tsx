@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { display, type Data } from './api';
 import { Badge, Empty, FileType, Icon, Search } from './ui';
 import { ResultView } from './results';
@@ -27,6 +27,7 @@ export type Document = {
   metadata: Data | null;
   controls: Controls;
   results: Record<string, Data>;
+  appliedControls: Record<string, Controls>;
   revision: number;
 };
 export type Operation = Request['operation'];
@@ -55,6 +56,7 @@ export function Navigator({
   onNode,
   onAdd,
   onRefresh,
+  onHide,
 }: {
   artifacts: Data[];
   document?: Document;
@@ -62,17 +64,43 @@ export function Navigator({
   onNode: (path: string) => void;
   onAdd: () => void;
   onRefresh: () => void;
+  onHide: () => void;
 }) {
   const [query, setQuery] = useState('');
   const [format, setFormat] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [nodeQuery, setNodeQuery] = useState('');
+  useEffect(() => {
+    setNodeQuery('');
+    setCollapsed(new Set());
+  }, [document?.source.version_id]);
   const files = artifacts.filter(
     (file) =>
       (!format || file.format === format) &&
       `${file.name} ${file.path}`.toLowerCase().includes(query.toLowerCase()),
   );
   const nodes: Data[] = document?.metadata?.nodes || [];
+  const queryText = nodeQuery.trim().toLowerCase();
+  const matches = nodes.filter((node) => node.path.toLowerCase().includes(queryText));
+  function searchNodes(value: string) {
+    setNodeQuery(value);
+    const matches = nodes.filter((node) =>
+      node.path.toLowerCase().includes(value.trim().toLowerCase()),
+    );
+    if (value.trim())
+      setCollapsed(
+        (old) =>
+          new Set(
+            [...old].filter(
+              (path) =>
+                !matches.some(
+                  (node) =>
+                    node.path !== path && node.path.startsWith(path === '/' ? '/' : path + '/'),
+                ),
+            ),
+          ),
+      );
+  }
   return (
     <aside className="navigator" aria-label="Data navigator">
       <div className="panel-heading">
@@ -90,6 +118,14 @@ export function Navigator({
           </button>
           <button className="icon-button" title="Add file" aria-label="Add file" onClick={onAdd}>
             <Icon name="Plus" />
+          </button>
+          <button
+            className="icon-button"
+            title="Hide data navigator"
+            aria-label="Hide data navigator"
+            onClick={onHide}
+          >
+            <Icon name="Close" />
           </button>
         </div>
       </div>
@@ -139,8 +175,8 @@ export function Navigator({
           {document.source.name}
         </div>
       )}
-      {nodes.length > 8 && (
-        <Search label="Find a dataset" value={nodeQuery} onChange={setNodeQuery} />
+      {(nodes.length > 8 || nodeQuery) && (
+        <Search label="Find a dataset" value={nodeQuery} onChange={searchNodes} />
       )}
       <div
         className="hierarchy"
@@ -167,7 +203,12 @@ export function Navigator({
         {nodes
           .filter(
             (node) =>
-              (!nodeQuery || node.path.toLowerCase().includes(nodeQuery.toLowerCase())) &&
+              (!queryText ||
+                matches.some(
+                  (match) =>
+                    match.path === node.path ||
+                    match.path.startsWith(node.path === '/' ? '/' : node.path + '/'),
+                )) &&
               !Array.from(collapsed).some(
                 (path) =>
                   node.path !== path && node.path.startsWith(path === '/' ? '/' : path + '/'),
@@ -210,6 +251,11 @@ export function Navigator({
               <span className="node-dtype">{node.dtype || node.kind}</span>
             </button>
           ))}
+        {queryText && !matches.length && (
+          <p className="inline-empty">
+            No matching datasets. Clear the search to see the file structure.
+          </p>
+        )}
         {!document && <p className="inline-empty">Open a file to inspect its structure.</p>}
         {document?.metadata?.fields && (
           <table className="field-list">
@@ -231,7 +277,9 @@ export function Navigator({
         )}
         {document && !document.metadata && (
           <p className="inline-empty">
-            {document.source.stale ? 'Source changed or unavailable.' : 'Reading file structure…'}
+            {document.source.stale
+              ? 'Source changed or unavailable.'
+              : 'File structure is not loaded.'}
           </p>
         )}
         {document?.metadata && !document.metadata.coverage?.complete && (
@@ -321,12 +369,34 @@ type DocumentProps = {
   change: (patch: Partial<Controls>) => void;
   run: (operation: Operation, patch?: Partial<Request>) => void;
 };
+function OptionsNotice({ action }: { action: string }) {
+  return (
+    <div className="unapplied-options">
+      <span>Options changed</span> The result shows the last applied scope. Use {action} to apply
+      the edited options.
+    </div>
+  );
+}
 export function DataView({ document, busy, change, run }: DocumentProps) {
   const controls = document.controls;
   const advanced = controls.readOptions;
   const mode = controls.dataMode;
   const array = document.source.format === 'HDF5';
   const result = document.results[mode];
+  const applied = result?.parameters;
+  const columns = controls.columns
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const optionsChanged = Boolean(
+    applied &&
+    ((array
+      ? controls.node !== applied.node ||
+        controls.selection.trim() !== (applied.selection || '').trim()
+      : JSON.stringify(columns) !== JSON.stringify(applied.columns || []) ||
+        (mode === 'preview' && controls.offset !== (applied.offset || 0))) ||
+      (mode === 'profile' && controls.maxRows !== applied.max_rows)),
+  );
   return (
     <section className="data-view">
       <div className="operation-toolbar">
@@ -402,23 +472,25 @@ export function DataView({ document, busy, change, run }: DocumentProps) {
               />
             </label>
           )}
-          <label>
-            {array ? 'Slice (indices or start:stop:step)' : 'Start row'}
-            <input
-              aria-label={array ? 'Explicit array slice' : 'Start row'}
-              type={array ? 'text' : 'number'}
-              min={array ? undefined : 0}
-              value={array ? controls.selection : controls.offset}
-              onChange={(event) =>
-                change(
-                  array
-                    ? { selection: event.target.value }
-                    : { offset: Number(event.target.value) },
-                )
-              }
-              placeholder="0:32,0:32"
-            />
-          </label>
+          {(array || mode === 'preview') && (
+            <label>
+              {array ? 'Slice (indices or start:stop:step)' : 'Start row'}
+              <input
+                aria-label={array ? 'Explicit array slice' : 'Start row'}
+                type={array ? 'text' : 'number'}
+                min={array ? undefined : 0}
+                value={array ? controls.selection : controls.offset}
+                onChange={(event) =>
+                  change(
+                    array
+                      ? { selection: event.target.value }
+                      : { offset: Number(event.target.value) },
+                  )
+                }
+                placeholder="0:32,0:32"
+              />
+            </label>
+          )}
           <label>
             Profile row/cell budget
             <input
@@ -444,6 +516,7 @@ export function DataView({ document, busy, change, run }: DocumentProps) {
       )}
       {result ? (
         <>
+          {optionsChanged && <OptionsNotice action="Update" />}
           <ResultView
             result={result}
             representation={controls.arrayView}
@@ -486,18 +559,29 @@ export function DataView({ document, busy, change, run }: DocumentProps) {
               ? 'Reading selection…'
               : document.source.stale
                 ? 'Source unavailable'
-                : array && controls.node === '/'
-                  ? 'Select a dataset'
-                  : 'No values read in this scope'
+                : !document.metadata
+                  ? 'File structure not loaded'
+                  : array && controls.node === '/'
+                    ? 'Select a dataset'
+                    : 'No values read in this scope'
           }
         >
           <p>
-            {array && controls.node === '/'
-              ? 'Choose a supported numeric dataset in the navigator. Read options also accept an explicit path.'
-              : busy
-                ? 'The requested scope is being read in a cancellable worker.'
-                : 'Use Update to read this selection.'}
+            {!document.metadata && !busy
+              ? 'Read the file structure to identify available datasets and columns.'
+              : array && controls.node === '/'
+                ? 'Choose a supported numeric dataset in the navigator. Read options also accept an explicit path.'
+                : busy
+                  ? 'The requested scope is being read in a cancellable worker.'
+                  : 'Use Update to read this selection.'}
           </p>
+          {!document.metadata && !busy && !document.source.stale && (
+            <button
+              onClick={() => run('inspect', { node: '/', selection: '', columns: [], offset: 0 })}
+            >
+              Read structure
+            </button>
+          )}
         </Empty>
       )}
     </section>
@@ -531,6 +615,30 @@ export function CompareView({
     change({
       keys: (keys.includes(name) ? keys.filter((key) => key !== name) : [...keys, name]).join(','),
     });
+  const scope = (value: Controls) => [
+    value.other,
+    value.maxRows,
+    Number(value.atol),
+    Number(value.rtol),
+    value.convertUnits,
+    value.nanEqual,
+    ...(array
+      ? [value.node, value.selection.trim()]
+      : [
+          value.position,
+          value.position
+            ? []
+            : value.keys
+                .split(',')
+                .map((key) => key.trim())
+                .filter(Boolean),
+          value.columns
+            .split(',')
+            .map((column) => column.trim())
+            .filter(Boolean),
+        ]),
+  ];
+  const applied = document.appliedControls.diff;
   return (
     <section className="analysis-view">
       <form
@@ -709,7 +817,12 @@ export function CompareView({
         </div>
       </form>
       {document.results.diff ? (
-        <ResultView result={document.results.diff} />
+        <>
+          {applied && JSON.stringify(scope(controls)) !== JSON.stringify(scope(applied)) && (
+            <OptionsNotice action="Run comparison" />
+          )}
+          <ResultView result={document.results.diff} />
+        </>
       ) : (
         <div className="analysis-placeholder">
           Comparison findings will appear here. Complete coverage and bounded examples stay with the
@@ -828,7 +941,14 @@ export function ValidateView({
         </p>
       </form>
       {document.results.validate ? (
-        <ResultView result={document.results.validate} />
+        <>
+          {document.appliedControls.validate &&
+            (controls.contract !== document.appliedControls.validate.contract ||
+              controls.maxRows !== document.appliedControls.validate.maxRows) && (
+              <OptionsNotice action="Run validation" />
+            )}
+          <ResultView result={document.results.validate} />
+        </>
       ) : (
         <div className="analysis-placeholder">
           Validation findings will appear here, with coverage and evidence for every rule.
@@ -841,17 +961,26 @@ export function Inspector({
   document,
   onRuns,
   onLineage,
+  onHide,
 }: {
   document: Document;
   onRuns: () => void;
   onLineage: () => void;
+  onHide: () => void;
 }) {
   const node = document.metadata?.nodes?.find((item: Data) => item.path === document.controls.node);
   return (
     <aside className="inspector" aria-label="Selection inspector">
       <div className="panel-heading">
         <strong>Selection inspector</strong>
-        <Icon name="Info" />
+        <button
+          className="icon-button"
+          title="Hide selection inspector"
+          aria-label="Hide selection inspector"
+          onClick={onHide}
+        >
+          <Icon name="Close" />
+        </button>
       </div>
       <dl>
         <dt>Format</dt>

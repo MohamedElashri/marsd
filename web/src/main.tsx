@@ -23,7 +23,7 @@ import './style.css';
 type View = 'Workbench' | 'Runs' | 'Lineage' | 'Reports';
 type Task = 'Data' | 'Compare' | 'Validate';
 type OpenDocument = Document & { task: Task };
-type Context = { version: string; revision: number };
+type Context = { version: string; revision: number; controls: Controls };
 type Queued = { request: Request; context: Context };
 const finished = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED', 'TIMED_OUT', 'INTERRUPTED']);
 const operations: Record<string, string> = {
@@ -131,6 +131,30 @@ function App() {
   const [showNavigator, setShowNavigator] = useState(
     () => window.matchMedia('(min-width: 721px)').matches,
   );
+  const navigatorToggle = useRef<HTMLButtonElement>(null);
+  const inspectorToggle = useRef<HTMLButtonElement>(null);
+  function hideNavigator() {
+    setShowNavigator(false);
+    requestAnimationFrame(() => navigatorToggle.current?.focus());
+  }
+  function hideInspector() {
+    setShowInspector(false);
+    requestAnimationFrame(() => inspectorToggle.current?.focus());
+  }
+  function toggleNavigator() {
+    if (showNavigator) hideNavigator();
+    else {
+      if (window.matchMedia('(max-width: 720px)').matches) setShowInspector(false);
+      setShowNavigator(true);
+    }
+  }
+  function toggleInspector() {
+    if (showInspector) hideInspector();
+    else {
+      if (window.matchMedia('(max-width: 720px)').matches) setShowNavigator(false);
+      setShowInspector(true);
+    }
+  }
   useEffect(() => {
     const narrow = window.matchMedia('(max-width: 1150px)');
     const phone = window.matchMedia('(max-width: 720px)');
@@ -244,7 +268,11 @@ function App() {
   ): Queued {
     const controls = document.controls;
     return {
-      context: { version: document.source.version_id, revision: document.revision },
+      context: {
+        version: document.source.version_id,
+        revision: document.revision,
+        controls: { ...controls },
+      },
       request: {
         operation,
         path: document.source.current_path || document.source.path,
@@ -346,6 +374,7 @@ function App() {
         updateDocument(current.source.version_id, (old) => ({
           ...old,
           results: { ...old.results, [result.kind]: result },
+          appliedControls: { ...old.appliedControls, [result.kind]: context!.controls },
         }));
     } else if (value.state !== 'SUCCEEDED' && value.state !== 'CANCELLED' && (!context || current))
       setError(
@@ -402,6 +431,7 @@ function App() {
           controls: initialControls(contracts.find((item) => !item.invalid)?.path || ''),
           metadata: null,
           results: {},
+          appliedControls: {},
           revision: 0,
           task: 'Data',
         };
@@ -428,6 +458,10 @@ function App() {
       setActive(activeRef.current);
       if (next && !next.metadata && !next.source.stale) schedule(next, 'inspect', { node: '/' });
     }
+    requestAnimationFrame(() => {
+      const tab = globalThis.document.getElementById(`file-tab-${activeRef.current}`);
+      (tab || navigatorToggle.current)?.focus();
+    });
   }
   function changeControls(patch: Partial<Controls>) {
     if (!document) return;
@@ -435,7 +469,7 @@ function App() {
       ...old,
       controls: { ...old.controls, ...patch },
       ...(patch.node !== undefined && patch.node !== old.controls.node
-        ? { revision: old.revision + 1, results: {} }
+        ? { revision: old.revision + 1, results: {}, appliedControls: {} }
         : {}),
     }));
   }
@@ -452,6 +486,7 @@ function App() {
         arrayView: 'plot' as const,
       },
       results: {},
+      appliedControls: {},
       revision: document.revision + 1,
       task: 'Data' as const,
     };
@@ -513,6 +548,20 @@ function App() {
     const target = event.target as HTMLElement;
     const editing =
       target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName);
+    if (event.key === 'Escape' && view === 'Workbench') {
+      const clearingSearch =
+        target instanceof HTMLInputElement && target.type === 'search' && target.value;
+      if (!clearingSearch && showInspector && window.matchMedia('(max-width: 1150px)').matches) {
+        event.preventDefault();
+        hideInspector();
+        return;
+      }
+      if (!clearingSearch && showNavigator && window.matchMedia('(max-width: 720px)').matches) {
+        event.preventDefault();
+        hideNavigator();
+        return;
+      }
+    }
     if (event.altKey && !event.ctrlKey && !event.metaKey && !editing) {
       const index = Number(event.code.startsWith('Digit') ? event.code.slice(5) : event.key) - 1;
       if (index >= 0 && index < documents.length) {
@@ -759,6 +808,7 @@ function App() {
                   onNode={chooseNode}
                   onAdd={() => showDialog('add')}
                   onRefresh={() => void refresh().catch((reason) => setError(reason.message))}
+                  onHide={hideNavigator}
                 />
                 <Divider
                   label="Resize data navigator"
@@ -776,7 +826,8 @@ function App() {
                   title={showNavigator ? 'Hide navigator' : 'Show navigator'}
                   aria-label={showNavigator ? 'Hide navigator' : 'Show navigator'}
                   aria-pressed={showNavigator}
-                  onClick={() => setShowNavigator(!showNavigator)}
+                  ref={navigatorToggle}
+                  onClick={toggleNavigator}
                 >
                   <Icon name="Files" />
                 </button>
@@ -855,7 +906,8 @@ function App() {
                     title="Toggle selection inspector"
                     aria-label="Toggle selection inspector"
                     aria-pressed={showInspector}
-                    onClick={() => setShowInspector(!showInspector)}
+                    ref={inspectorToggle}
+                    onClick={toggleInspector}
                   >
                     <Icon name="Info" />
                   </button>
@@ -950,6 +1002,7 @@ function App() {
                 />
                 <Inspector
                   document={document}
+                  onHide={hideInspector}
                   onRuns={() => {
                     setRunVersion(active);
                     setFocusedRun('');
