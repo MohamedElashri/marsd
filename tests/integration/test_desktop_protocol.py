@@ -7,6 +7,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
+import psutil
 import pytest
 
 from marsd.registry import Registry
@@ -56,7 +57,12 @@ def test_native_protocol_one_use_auth_eof_and_reopen(tmp_path):
     child, ready = launch(project, create=True)
     try:
         assert set(ready) == {"protocol", "pid", "port", "code"}
-        assert ready["protocol"] == 1 and ready["pid"] == child.pid
+        assert ready["protocol"] == 1
+        # Windows venv python.exe can be a redirector which owns the actual interpreter.
+        assert ready["pid"] in {
+            child.pid,
+            *(p.pid for p in psutil.Process(child.pid).children(recursive=True)),
+        }
         with httpx.Client(base_url=f"http://127.0.0.1:{ready['port']}", trust_env=False) as client:
             assert client.get("/api/project").status_code == 401
             assert (

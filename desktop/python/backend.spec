@@ -2,6 +2,7 @@ from importlib.metadata import distribution, distributions
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 from pathlib import Path
+import sys
 import sysconfig
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
@@ -29,8 +30,8 @@ for package in distributions():
             path = Path(package.locate_file(entry))
             if path.is_file():
                 sources.append((str(path), str(Path('licenses/python') / name / str(entry.parent).replace('..','_'))))
-license_file = Path(sysconfig.get_path('stdlib')) / 'LICENSE.txt'
-if not license_file.is_file():
+license_file = next((path for path in [Path(sysconfig.get_path('stdlib')) / 'LICENSE.txt', Path(sys.base_prefix) / 'LICENSE.txt', Path(sys.base_prefix) / 'LICENSE'] if path.is_file()), None)
+if license_file is None:
     raise SystemExit('The CPython LICENSE.txt must be available before runtime distribution')
 sources.append((str(license_file), 'licenses/cpython'))
 sources.append((str(project / 'LICENSE'), 'licenses/marsd'))

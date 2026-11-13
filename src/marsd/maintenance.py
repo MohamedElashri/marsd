@@ -59,7 +59,7 @@ def backup_to(registry: Registry, target: Path) -> Path:
         with closing(sqlite3.connect(temporary)) as copy:
             registry.db.backup(copy, pages=256)
             _integrity(copy)
-        with temporary.open("rb") as stream:
+        with temporary.open("r+b") as stream:
             os.fsync(stream.fileno())
         os.link(temporary, target)
         return target
