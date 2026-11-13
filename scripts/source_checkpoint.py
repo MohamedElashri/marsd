@@ -1,4 +1,4 @@
-"""Identify an uncommitted implementation without hashing mutable planning logs."""
+"""Fingerprint source and configuration for platform verification reports."""
 
 import hashlib
 import json

@@ -155,7 +155,7 @@ export function DesktopRoot({ children }: { children: ReactNode }) {
           </p>
         )}
         <p className="muted">
-          Experimental desktop candidate. Use a local disk and keep source files backed up.
+          Experimental desktop. Use a local disk and keep source files backed up.
         </p>
       </div>
       <footer>Bundled runtime · offline after installation · no account</footer>

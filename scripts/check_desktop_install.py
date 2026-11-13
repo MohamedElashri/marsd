@@ -1,4 +1,4 @@
-"""Install/remove the native candidate and exercise its real WebKit/WebView2 UI in CI.
+"""Install/remove the native application and exercise its WebKit/WebView2 UI in CI.
 
 Test-only tools: tauri-driver, WebKitWebDriver or matching msedgedriver. No driver is shipped.
 """

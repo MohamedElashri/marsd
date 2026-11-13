@@ -1,4 +1,4 @@
-name: Experimental native desktop candidates
+name: Native desktop checks
 on:
   push:
     paths-ignore: [plan.md]
@@ -94,12 +94,11 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: experimental-desktop-${{ matrix.target }}
+          name: desktop-${{ matrix.target }}
           path: |
             desktop-runtime-evidence.json
             desktop-install-evidence.*
             desktop/runtime/*license*
             desktop/runtime/cpython-provenance.json
             desktop/src-tauri/target/${{ matrix.target }}/release/bundle/
-# This creates unsigned/ad-hoc experimental candidates. It does not certify native UI,
-# minimum OS, installer/uninstaller, signing/notarization, or clean-machine support.
+# Artifacts are unsigned/ad-hoc. Release signing and clean-machine qualification are separate.

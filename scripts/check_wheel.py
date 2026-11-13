@@ -11,7 +11,7 @@ def current_wheel(project=root):
     metadata = tomllib.loads((project / "pyproject.toml").read_text())["project"]
     wheel = project / "dist" / f"{metadata['name']}-{metadata['version']}-py3-none-any.whl"
     if not wheel.is_file():
-        raise FileNotFoundError(f"Build the current candidate first: {wheel.name}")
+        raise FileNotFoundError(f"Build the current version first: {wheel.name}")
     return wheel
 
 

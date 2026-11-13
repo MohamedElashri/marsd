@@ -78,7 +78,6 @@ test('real Explore, Compare, Validate and report workflow', async ({ page }) => 
     return response.json();
   });
   expect(project.name).toBe('Synthetic spectral study');
-  // J4-J6: actual recorded subprocesses, partial outputs, readiness and exact version navigation.
   await page.getByRole('button', { name: 'Explore', exact: true }).click();
   await page.getByRole('button', { name: /identifiers\.csv/ }).click();
   await expect(page.getByText('Structure loaded. Choose what to read.')).toBeVisible();

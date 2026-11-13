@@ -394,7 +394,8 @@ def test_browser_run_graph_endpoints_require_auth_and_never_launch(study):
     finally:
         registry.close()
     with TestClient(
-        create_app(study, launch_code="phase-three", port=8765), base_url="http://127.0.0.1:8765"
+        create_app(study, launch_code="run-evidence-test", port=8765),
+        base_url="http://127.0.0.1:8765",
     ) as client:
         for endpoint in [
             "runs",
@@ -403,7 +404,9 @@ def test_browser_run_graph_endpoints_require_auth_and_never_launch(study):
             f"lineage/{run['id']}",
         ]:
             assert client.get("/api/" + endpoint).status_code == 401
-        token = client.post("/api/session", json={"code": "phase-three"}).json()["access_token"]
+        token = client.post("/api/session", json={"code": "run-evidence-test"}).json()[
+            "access_token"
+        ]
         headers = {"Authorization": "Bearer " + token}
         assert client.get("/api/runs", headers=headers).json()[0]["id"] == run["id"]
         assert client.get("/api/lineage/" + run["id"], headers=headers).json()["seed"] == run["id"]

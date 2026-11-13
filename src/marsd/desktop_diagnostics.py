@@ -88,7 +88,18 @@ def exercise(root: Path):
         "architecture": platform.machine(),
         "seconds": round(time.monotonic() - started, 3),
         "source_preservation": "PASS",
-        "journeys": ["J1", "J2", "J3", "J4", "J6"],
+        "checks": [
+            "inspect",
+            "preview",
+            "diff",
+            "validate",
+            "reports",
+            "runs",
+            "readiness",
+            "lineage",
+            "backup",
+            "source_preservation",
+        ],
         "project": str(root),
     }
 

@@ -1349,9 +1349,10 @@ function App() {
                 </p>
                 <h2>Current scope</h2>
                 <p>
-                  This candidate supports the browser workflow, trusted Python run recording and
-                  bounded lineage. Native desktop installers remain a later phase. Any supported
-                  desktop release must pass macOS, Windows and Linux gates.
+                  Marsd supports browser and desktop workflows, trusted Python run recording and
+                  bounded lineage. Desktop builds target macOS ARM64, Windows x86_64 and Linux
+                  x86_64. Desktop distribution is experimental pending signing and baseline
+                  user-machine qualification.
                 </p>
               </section>
             )}
