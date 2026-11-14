@@ -8,6 +8,7 @@
   <a href="https://github.com/MohamedElashri/marsd/releases/latest">Latest release</a> ·
   <a href="docs/usage.md">Usage</a> ·
   <a href="docs/development.md">Contributing</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
   <a href="LICENSE">Apache-2.0</a>
 </p>
 

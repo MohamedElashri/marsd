@@ -33,7 +33,7 @@ desktop-build = ["pyinstaller==6.22.3"]
 packages = ["src/marsd"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "web", "scripts", "tests", "desktop", "docs", ".github", ".gitattributes", ".gitignore", ".python-version", ".sanad.toml", "pyproject.toml", "uv.lock", "LICENSE", "README.md"]
+include = ["src", "web", "scripts", "tests", "desktop", "docs", ".github", ".gitattributes", ".gitignore", ".python-version", ".sanad.toml", "pyproject.toml", "uv.lock", "LICENSE", "README.md", "CHANGELOG.md"]
 exclude = ["web/node_modules", "web/test-results", "desktop/runtime", "desktop/build", "desktop/src-tauri/target", "desktop/src-tauri/gen"]
 
 [tool.pytest.ini_options]

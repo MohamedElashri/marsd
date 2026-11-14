@@ -61,7 +61,7 @@ Review the preview before writing and use the actual fetched trusted base. Commi
 
 [Prepare release](../.github/workflows/release.yml) runs for a version tag matching project metadata on the default branch. It requires core, native and online Sanad checks, verifies artifact/source hashes, then assembles the tested Python distributions and all desktop targets into an experimental draft. The draft includes a manifest, checksums, notices, inventories and verification evidence. Existing releases are not overwritten and publication is manual.
 
-1. Review the source and checks; create and push the matching version tag.
+1. Update [the changelog](../CHANGELOG.md), review the source and checks, then create and push the matching version tag.
 2. Inspect the draft's source identity, complete target set, evidence and `SHA256SUMS`.
 3. Enable [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases) before publication. Attach everything first; publishing locks the tag/assets.
 4. Publish the intended draft, preserving experimental status until supported-release requirements are met. Verify its release attestation/assets and rehearse installation from downloaded packages.

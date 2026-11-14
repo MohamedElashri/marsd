@@ -19,6 +19,7 @@ def test_document_links_require_existing_headings(checks, tmp_path, monkeypatch)
     monkeypatch.setattr(docs, "ROOT", tmp_path)
     (tmp_path / "docs").mkdir()
     (tmp_path / "README.md").write_text("# Project\n[Guide](docs/usage.md#using-data)\n")
+    (tmp_path / "CHANGELOG.md").write_text("# Changelog\n")
     guide = tmp_path / "docs/usage.md"
     guide.write_text("# Using data\n")
     docs.check()

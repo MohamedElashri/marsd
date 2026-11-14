@@ -34,7 +34,11 @@ def anchors(text: str) -> set[str]:
 
 
 def check() -> None:
-    documents = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
+    documents = [
+        ROOT / "README.md",
+        ROOT / "CHANGELOG.md",
+        *sorted((ROOT / "docs").rglob("*.md")),
+    ]
     errors = []
     for document in documents:
         for match in LINK.finditer(document.read_text(encoding="utf-8")):
