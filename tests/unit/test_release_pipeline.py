@@ -73,18 +73,24 @@ def artifacts(tmp_path, monkeypatch, pipeline):
     write(primary_report, primary)
     native_directories = {}
     for target, (_, pattern) in pipeline.TARGETS.items():
+        system, architecture = next(
+            host for host, value in pipeline.BUILD_TARGETS.items() if value == target
+        )
+        diagnostic = {
+            "status": "PASS",
+            "frozen": True,
+            "version": "0.1.0",
+            "python": pipeline.VERSION,
+            "platform": system,
+            "architecture": architecture,
+        }
         directory = incoming / f"desktop-{target}"
         native_directories[target] = directory
         write(
             directory / "desktop-runtime-evidence.json",
             {
                 "status": "PASS",
-                "diagnostics": {
-                    "status": "PASS",
-                    "frozen": True,
-                    "version": "0.1.0",
-                    "python": pipeline.VERSION,
-                },
+                "diagnostics": diagnostic,
                 "cancel_shutdown_reopen": "PASS",
                 "frozen_cli_failed_run_partial_output_and_timeout": "PASS",
                 "owner_death_with_open_control_pipe": "PASS",
@@ -130,7 +136,7 @@ def artifacts(tmp_path, monkeypatch, pipeline):
                 {
                     "status": "PASS",
                     "package_sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
-                    "diagnostics": {"version": "0.1.0", "frozen": True},
+                    "diagnostics": diagnostic,
                 },
             )
     write(
@@ -171,6 +177,30 @@ def test_release_rejects_modified_installer(pipeline, artifacts):
     incoming, output, native = artifacts
     next(native["x86_64-pc-windows-msvc"].glob("*.exe")).write_bytes(b"altered installer")
     with pytest.raises(ValueError, match="Installer evidence does not match"):
+        pipeline.assemble(incoming, output, "v0.1.0", "b" * 40)
+
+
+@pytest.mark.parametrize(
+    "target", ["aarch64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"]
+)
+@pytest.mark.parametrize("field", ["platform", "architecture"])
+def test_release_rejects_wrong_native_target_identity(pipeline, artifacts, target, field):
+    incoming, output, native = artifacts
+    path = native[target] / "desktop-runtime-evidence.json"
+    report = json.loads(path.read_text())
+    report["diagnostics"][field] = "other target"
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="Wrong native platform"):
+        pipeline.assemble(incoming, output, "v0.1.0", "b" * 40)
+
+
+def test_release_checks_the_copied_disk_image_runtime_identity(pipeline, artifacts):
+    incoming, output, native = artifacts
+    path = native["aarch64-apple-darwin"] / "desktop-package-evidence.json"
+    report = json.loads(path.read_text())
+    report["diagnostics"]["architecture"] = "x86_64"
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="Wrong native platform"):
         pipeline.assemble(incoming, output, "v0.1.0", "b" * 40)
 
 

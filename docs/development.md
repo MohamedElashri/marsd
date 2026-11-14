@@ -66,10 +66,21 @@ Review the preview before writing and use the actual fetched trusted base. Commi
 3. Enable [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases) before publication. Attach everything first; publishing locks the tag/assets.
 4. Publish the intended draft, preserving experimental status until supported-release requirements are met. Verify its release attestation/assets and rehearse installation from downloaded packages.
 
-Use the specific candidate tag for retries and publication:
+To retry preparation, use the specific candidate tag:
 
 ```sh
 gh workflow run release.yml --ref TAG
+```
+
+After the workflow succeeds, review the complete draft and check that immutable releases are enabled (`enabled: true`):
+
+```sh
+gh api 'repos/{owner}/{repo}/immutable-releases'
+```
+
+Once that review is complete, publish the experimental draft:
+
+```sh
 gh release edit TAG --draft=false --prerelease
 ```
 

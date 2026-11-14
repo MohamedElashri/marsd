@@ -12,6 +12,7 @@ import tomllib
 from pathlib import Path
 from xml.etree import ElementTree
 
+from build_desktop import TARGETS as BUILD_TARGETS
 from prepare_desktop_python import CHECKSUMS, VERSION
 from source_checkpoint import checkpoint
 
@@ -84,6 +85,22 @@ def one(directory, pattern):
         len(matches) == 1, f"Expected exactly one {pattern} in {directory}; found {len(matches)}"
     )
     return matches[0]
+
+
+def check_runtime_identity(diagnostic, target, product_version):
+    require(
+        diagnostic["status"] == "PASS" and diagnostic["frozen"],
+        f"Unsuccessful frozen runtime: {target}",
+    )
+    require(
+        diagnostic["version"] == product_version and diagnostic["python"] == VERSION,
+        f"Wrong frozen runtime version: {target}",
+    )
+    expected = next(host for host, value in BUILD_TARGETS.items() if value == target)
+    require(
+        (diagnostic.get("platform"), str(diagnostic.get("architecture", "")).lower()) == expected,
+        f"Wrong native platform: {target}",
+    )
 
 
 def draft(output, tag, commit, repository):
@@ -256,15 +273,8 @@ def assemble(incoming, output, tag, commit):
     for target, (suffix, pattern) in TARGETS.items():
         directory = incoming / f"desktop-{target}"
         runtime = read_json(directory / "desktop-runtime-evidence.json")
-        diagnostic = runtime["diagnostics"]
-        require(
-            runtime["status"] == diagnostic["status"] == "PASS" and diagnostic["frozen"],
-            f"Unsuccessful frozen runtime: {target}",
-        )
-        require(
-            diagnostic["version"] == product_version and diagnostic["python"] == VERSION,
-            f"Wrong frozen runtime version: {target}",
-        )
+        require(runtime["status"] == "PASS", f"Unsuccessful frozen runtime: {target}")
+        check_runtime_identity(runtime["diagnostics"], target, product_version)
         for key in (
             "cancel_shutdown_reopen",
             "frozen_cli_failed_run_partial_output_and_timeout",
@@ -311,11 +321,7 @@ def assemble(incoming, output, tag, commit):
                 install["status"] == "PASS" and install["package_sha256"] == sha256(package),
                 "Disk-image evidence does not match package",
             )
-            require(
-                install["diagnostics"]["version"] == product_version
-                and install["diagnostics"]["frozen"],
-                "Wrong disk-image runtime",
-            )
+            check_runtime_identity(install["diagnostics"], target, product_version)
             installs[target] = install
         copy(package, f"{prefix}-{suffix}")
         copy(
