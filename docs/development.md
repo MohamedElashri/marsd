@@ -111,9 +111,9 @@ evidence. Existing releases are not overwritten and publication is manual.
 3. Enable
    [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
    before publication. Attach everything first; publishing locks the tag/assets.
-4. Publish the intended draft, preserving experimental status until
-   supported-release requirements are met. Verify its release attestation/assets
-   and rehearse installation from downloaded packages.
+4. Publish the intended draft, retaining experimental desktop qualifications in
+   its notes. Verify its release attestation/assets and rehearse installation
+   from downloaded packages.
 
 To retry preparation, use the specific candidate tag:
 
@@ -128,11 +128,15 @@ releases are enabled (`enabled: true`):
 gh api 'repos/{owner}/{repo}/immutable-releases'
 ```
 
-Once that review is complete, publish the experimental draft:
+Once that review is complete, publish the version as the Latest release:
 
 ```sh
-gh release edit TAG --draft=false --prerelease
+gh release edit TAG --draft=false --prerelease=false --latest
 ```
+
+For preview versions, publish with `--prerelease` instead. GitHub excludes
+prereleases from Latest. Desktop signing and qualification limits remain in the
+release notes regardless of this flag.
 
 If upload leaves a partial draft, inspect/delete that draft before retrying,
 preserving the tag. Never replace published assets or reuse an immutable tag.
