@@ -3,62 +3,61 @@
 </p>
 <h1 align="center">Marsd · مرصد</h1>
 <p align="center"><strong>Scientific data. Clear evidence.</strong></p>
-<p align="center">A desktop and local browser app for exploring, comparing and
-validating scientific data.</p>
+<p align="center">A local scientific data workbench for desktop, browser and
+terminal.</p>
 <p align="center">
-  <a href="https://github.com/MohamedElashri/marsd/releases/latest">Latest release</a> ·
+  <a href="https://github.com/MohamedElashri/marsd/releases/latest">Download</a> ·
+  <a href="#browser-and-cli-with-sample-data">Try the sample</a> ·
   <a href="docs/usage.md">Usage</a> ·
-  <a href="docs/development.md">Contributing</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="LICENSE">Apache-2.0</a>
+  <a href="docs/development.md">Contributing</a>
 </p>
 
-Marsd helps researchers and engineers inspect **HDF5, Parquet and CSV** files,
-compare experimental outputs, and check results against explicit data rules.
+Marsd is a local workbench for **HDF5, Parquet and CSV** data. Inspect an
+output, compare it with an earlier result, and check the fields, values and
+units your workflow depends on. Save findings as JSON or standalone HTML
+reports for review or handoff.
 
-Use it as **a desktop app or a local browser application**, with a CLI and
-Python SDK for scripted workflows. Datasets stay in their original folders;
-metadata and findings live in a local project.
+Use the **desktop app or local browser workbench** for interactive exploration,
+the **CLI** for repeatable checks, and the **Python SDK** to record selected
+script activity. Your source files stay in their original folders. No account,
+telemetry or hosted service is required for ordinary use.
 
 ![Marsd workbench showing a synthetic HDF5 transmission map, its hierarchy and selection metadata](docs/assets/workspace.png)
 
-*The workbench above shows entirely synthetic data.*
-
-## How it runs
-
-**One application, three interfaces:** all use the same Python engine and local
-project format. Desktop and browser display the same graphical workbench; the
-CLI runs operations directly without a graphical interface or running server.
-
-| Interface | When to use it | How it runs |
-|---|---|---|
-| **Desktop app** | Interactive work in a standalone application window. | Available for macOS, Windows and Linux. Python is bundled; Marsd starts and stops its local backend automatically. |
-| **Local browser app** | The same interactive workbench from your Python environment. | `marsd open PROJECT` starts a server on `127.0.0.1` and opens your browser. Keep the terminal running. |
-| **CLI and Python SDK** | Repeatable checks and scripted workflows. | The CLI inspects, compares and validates data. The SDK adds explicit hooks to Python scripts to record selected inputs, outputs and execution evidence. |
-
-For example, explore a project in the desktop app, close the project, run
-validation with the CLI, then reopen it to review the saved report. SDK-recorded
-runs are also visible in the workbench. No import or conversion is needed
-between interfaces; only one writer can own a project at a time. See
-[usage](docs/usage.md) for commands and project ownership.
-
-Everything runs locally. No account, telemetry or hosted service is required for
-ordinary use.
+*Inspecting an HDF5 map with its hierarchy, units and scope. Synthetic data.*
 
 ## What you can do
 
-- **Look inside a file:** browse HDF5 hierarchies, inspect table schemas, and
-  view numeric slices as plots or values.
-- **Compare results:** align tables by explicit keys or row position, compare
-  array slices, and control numeric tolerances and unit conversion.
-- **Check data quality:** apply YAML rules for required fields, types, shapes,
-  ranges and units; export findings as JSON or standalone HTML.
-- **Trace recorded work:** review selected Python runs, failures and documented
-  dependencies between inputs and outputs.
+- **Explore an unfamiliar file.** Browse HDF5 groups and datasets, inspect table
+  schemas, and view numeric slices as plots or values.
+- **Compare two outputs.** Align tables by keys or row position, compare array
+  slices, and set numeric tolerances or opt into unit conversion.
+- **Check a data handoff.** Apply YAML rules for required fields, types, shapes,
+  ranges and units. Export findings as JSON or standalone HTML.
+- **Review recorded work.** Follow selected Python runs, their inputs and
+  outputs, failures and documented dependencies.
 
-Marsd keeps source identity, scope and coverage with each result, so you can
-review the evidence behind a check. Inspection is read-only; recorded Python
-scripts must be trusted and are not sandboxed.
+Results keep source identity, scope and coverage with the findings, so the
+limits of a check remain visible when you review or share it. Inspection is
+read-only; recorded Python scripts must be trusted and are not sandboxed.
+
+## How it runs
+
+**One application, three interfaces:** all share the same Python engine,
+project format, saved reports and run records. Desktop and browser display the
+same graphical workbench.
+
+| Interface | How you use it |
+|---|---|
+| **Desktop app** | A standalone window. Python is bundled, and Marsd manages its local backend automatically. |
+| **Local browser app** | `marsd open PROJECT` serves the workbench on `127.0.0.1` from your Python environment. Keep the terminal running. |
+| **CLI and Python SDK** | Run checks directly from the terminal, or add explicit hooks to Python scripts to record selected inputs, outputs and stages. |
+
+Explore a project in the desktop app, close it, run CLI checks, then reopen it
+to review saved reports. SDK-recorded runs appear in the workbench too. One
+writer owns a project at a time; stop the browser server or close the desktop
+project before writing from the CLI.
 
 ## Get started
 
@@ -75,9 +74,9 @@ experimental prereleases:
 | Windows, x86_64 | `-setup.exe` | Run the installer, then launch Marsd. |
 | Ubuntu Linux, x86_64 | `.deb` | From the download folder, run `sudo apt install ./marsd-*-linux-x86_64.deb`. |
 
-Python is bundled; no separate Python, Node.js or server command is needed.
-Packages are experimental and unsigned/ad-hoc. Check the release notes for
-compatibility and signing status, and verify downloads against `SHA256SUMS`.
+Desktop packages need no separate Python or server setup. Builds are
+experimental and unsigned/ad-hoc. Check release notes for compatibility and
+signing status, and verify downloads against `SHA256SUMS`.
 
 1. Launch Marsd and choose **Create project…**.
 2. Choose a **Project folder** for metadata and reports. If your data is
@@ -118,9 +117,11 @@ uv run marsd inspect ./demo/data/run_042.h5 --project ./demo
 This prints the file's hierarchy and metadata. You can also open `demo` in the
 desktop app through **Open project…** after stopping the browser server.
 
-See [usage](docs/usage.md) for your own files, comparisons, validation, SDK run
-recording and recovery; [development](docs/development.md) covers contributing,
-builds and releases.
+Next, try
+[comparison and validation](docs/usage.md#explore-compare-and-validate)
+on the sample's deliberately changed outputs. See [usage](docs/usage.md) for
+your own files, SDK recording and recovery, or
+[development](docs/development.md) for builds and contributions.
 
 ## License
 
