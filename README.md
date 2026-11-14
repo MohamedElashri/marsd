@@ -21,13 +21,17 @@ Use it as **a desktop app or a local browser application**, with a CLI and Pytho
 
 ## How it runs
 
-| Interface | How you use it |
-|---|---|
-| **Desktop app** | An application window on macOS, Windows or Linux. Python is bundled; Marsd manages its local backend automatically. |
-| **Local browser app** | Run `marsd open PROJECT` from a Python installation. It starts a server on `127.0.0.1` and opens the UI in your browser. Keep the terminal running. |
-| **CLI and Python SDK** | Inspect, compare and validate from the terminal; instrument selected Python scripts to record inputs, outputs and execution evidence. |
+**One application, three interfaces:** all use the same Python engine and local project format. Desktop and browser display the same graphical workbench; the CLI runs operations directly without a graphical interface or running server.
 
-Both graphical interfaces provide the same workbench and project format. No account, telemetry or hosted service is required for ordinary use.
+| Interface | When to use it | How it runs |
+|---|---|---|
+| **Desktop app** | Interactive work in a standalone application window. | Available for macOS, Windows and Linux. Python is bundled; Marsd starts and stops its local backend automatically. |
+| **Local browser app** | The same interactive workbench from your Python environment. | `marsd open PROJECT` starts a server on `127.0.0.1` and opens your browser. Keep the terminal running. |
+| **CLI and Python SDK** | Repeatable checks and scripted workflows. | The CLI inspects, compares and validates data. The SDK adds explicit hooks to Python scripts to record selected inputs, outputs and execution evidence. |
+
+For example, explore a project in the desktop app, close the project, run validation with the CLI, then reopen it to review the saved report. SDK-recorded runs are also visible in the workbench. No import or conversion is needed between interfaces; only one writer can own a project at a time. See [usage](docs/usage.md) for commands and project ownership.
+
+Everything runs locally. No account, telemetry or hosted service is required for ordinary use.
 
 ## What you can do
 
