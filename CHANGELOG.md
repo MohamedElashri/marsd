@@ -4,11 +4,15 @@
 
 First experimental release.
 
-- Desktop and local browser workbenches sharing one engine and project format with the CLI and Python SDK.
-- HDF5, Parquet and CSV inspection, bounded previews, comparisons and YAML data contracts.
+- Desktop and local browser workbenches sharing one engine and project format
+  with the CLI and Python SDK.
+- HDF5, Parquet and CSV inspection, bounded previews, comparisons and YAML data
+  contracts.
 - JSON and HTML reports with source identity, scope and coverage.
 - Explicit Python run recording, readiness checks and input/output lineage.
 - Local project backup, recovery and source-root remapping.
-- Desktop packages for macOS ARM64, Windows x86_64 and Linux x86_64, plus Python distributions and release verification evidence.
+- Desktop packages for macOS ARM64, Windows x86_64 and Linux x86_64, plus Python
+  distributions and release verification evidence.
 
-See the release notes for platform requirements, signing status and known experimental limitations.
+See the release notes for platform requirements, signing status and known
+experimental limitations.
